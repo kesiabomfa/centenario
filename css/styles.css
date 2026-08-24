@@ -228,3 +228,8 @@ code{ background:var(--amber-bg); padding:1px 6px; border-radius:4px; font-famil
 }
 .toast.error{ background:var(--red); }
 .toast.success{ background:var(--green); }
+
+/* Garantia global: o atributo hidden sempre esconde o elemento, mesmo que
+   alguma classe acima tenha definido display:flex/block para ele. Sem isso,
+   a tela de login, o app e os modais podem "não sumir" depois de fechados. */
+[hidden]{ display:none !important; }
