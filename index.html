@@ -351,6 +351,15 @@
     <!-- ---------- RELATÓRIOS ---------- -->
     <section class="view" id="view-relatorios">
       <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h2 style="margin-bottom:2px;">Backup dos dados</h2>
+            <div style="font-size:12.5px; color:var(--text-dim);">Baixa uma cópia completa (produtos, vendas e movimentações) em um arquivo no seu computador.</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btn-backup">Baixar backup (.json)</button>
+        </div>
+      </div>
+      <div class="panel">
         <h2>Filtrar período</h2>
         <div class="row-flex">
           <div class="field"><label>De</label><input type="date" id="rep-from"></div>
@@ -566,12 +575,12 @@ function attachListeners(){
     fillProductSelects();
     renderDashboard();
   });
-  unsubSales = db.collection('sales').orderBy('date','desc').limit(300).onSnapshot(snap=>{
+  unsubSales = db.collection('sales').orderBy('date','desc').limit(500).onSnapshot(snap=>{
     sales = snap.docs.map(d=>({id:d.id, ...d.data()}));
     renderDashboard();
     renderRecentSales();
   });
-  unsubMov = db.collection('movements').orderBy('date','desc').limit(200).onSnapshot(snap=>{
+  unsubMov = db.collection('movements').orderBy('date','desc').limit(500).onSnapshot(snap=>{
     movements = snap.docs.map(d=>({id:d.id, ...d.data()}));
     renderMovements();
   });
@@ -902,42 +911,100 @@ function renderRecentSales(){
   </tbody></table>`;
 }
 
+/* --------------------------------- backup ----------------------------------- */
+document.getElementById('btn-backup').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btn-backup');
+  btn.disabled = true; btn.textContent = 'Gerando...';
+  try{
+    const [prodSnap, saleSnap, movSnap] = await Promise.all([
+      db.collection('products').get(),
+      db.collection('sales').get(),
+      db.collection('movements').get()
+    ]);
+    const toPlain = snap => snap.docs.map(d=>{
+      const data = {...d.data()};
+      Object.keys(data).forEach(k=>{
+        if(data[k] && typeof data[k].toDate === 'function'){
+          data[k] = data[k].toDate().toISOString();
+        }
+      });
+      return {id:d.id, ...data};
+    });
+    const backup = {
+      geradoEm: new Date().toISOString(),
+      totalProdutos: prodSnap.size,
+      totalVendas: saleSnap.size,
+      totalMovimentacoes: movSnap.size,
+      produtos: toPlain(prodSnap),
+      vendas: toPlain(saleSnap),
+      movimentacoes: toPlain(movSnap)
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `centenario-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Backup baixado com sucesso.');
+  } catch(err){
+    console.error(err);
+    showToast('Erro ao gerar o backup.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Baixar backup (.json)';
+  }
+});
+
 /* ------------------------------- relatórios -------------------------------- */
 document.getElementById('btn-run-report').addEventListener('click', runReport);
-function runReport(){
+async function runReport(){
   const from = document.getElementById('rep-from').value;
   const to = document.getElementById('rep-to').value;
   const payFilter = document.getElementById('rep-pay').value;
-  let filtered = sales.filter(s=>{
-    if(!s.date) return false;
-    const d = s.date.toDate ? s.date.toDate() : new Date(s.date);
-    if(from && d < new Date(from+'T00:00:00')) return false;
-    if(to && d > new Date(to+'T23:59:59')) return false;
-    if(payFilter && s.paymentMethod !== payFilter) return false;
-    return true;
-  });
-  const revenue = filtered.filter(s=>!s.cancelled).reduce((s,x)=>s+x.total,0);
-  const cost = filtered.filter(s=>!s.cancelled).reduce((sum,s)=>sum + s.items.reduce((si,i)=>{
-    const p = products.find(pp=>pp.id===i.productId);
-    return si + (p ? p.costPrice*i.qty : 0);
-  },0), 0);
-  document.getElementById('rep-revenue').textContent = fmtBRL(revenue);
-  document.getElementById('rep-cost').textContent = fmtBRL(cost);
-  document.getElementById('rep-profit').textContent = fmtBRL(revenue-cost);
-  document.getElementById('rep-count').textContent = filtered.filter(s=>!s.cancelled).length;
+  const btn = document.getElementById('btn-run-report');
+  btn.disabled = true; btn.textContent = 'Gerando...';
 
-  const tbody = document.getElementById('report-table');
-  tbody.innerHTML = filtered.length===0
-    ? `<tr><td colspan="6"><div class="empty-state"><div class="glyph">📊</div>Nenhuma venda no período selecionado</div></td></tr>`
-    : filtered.map(s=>`
-      <tr class="${s.cancelled?'row-cancelled':''}">
-        <td class="mono">${fmtDate(s.date)}</td>
-        <td>${s.items.map(i=>i.qty+'× '+i.name).join(', ')}</td>
-        <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : `<span class="tag ${payTagClass(s.paymentMethod)}">${s.paymentMethod}</span>`}</td>
-        <td>${s.seller}</td>
-        <td class="mono">${fmtBRL(s.total)}</td>
-        <td><button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button></td>
-      </tr>`).join('');
+  try{
+    // Busca direto no banco (não depende do cache local), então funciona
+    // corretamente mesmo com anos de histórico acumulado.
+    let query = db.collection('sales').orderBy('date','asc');
+    if(from) query = query.where('date','>=', new Date(from+'T00:00:00'));
+    if(to) query = query.where('date','<=', new Date(to+'T23:59:59'));
+    const snap = await query.get();
+    let filtered = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(payFilter) filtered = filtered.filter(s=>s.paymentMethod === payFilter);
+    filtered.sort((a,b)=> (b.date?.toMillis?.()||0) - (a.date?.toMillis?.()||0));
+
+    const revenue = filtered.filter(s=>!s.cancelled).reduce((s,x)=>s+x.total,0);
+    const cost = filtered.filter(s=>!s.cancelled).reduce((sum,s)=>sum + s.items.reduce((si,i)=>{
+      const p = products.find(pp=>pp.id===i.productId);
+      return si + (p ? p.costPrice*i.qty : 0);
+    },0), 0);
+    document.getElementById('rep-revenue').textContent = fmtBRL(revenue);
+    document.getElementById('rep-cost').textContent = fmtBRL(cost);
+    document.getElementById('rep-profit').textContent = fmtBRL(revenue-cost);
+    document.getElementById('rep-count').textContent = filtered.filter(s=>!s.cancelled).length;
+
+    const tbody = document.getElementById('report-table');
+    tbody.innerHTML = filtered.length===0
+      ? `<tr><td colspan="6"><div class="empty-state"><div class="glyph">📊</div>Nenhuma venda no período selecionado</div></td></tr>`
+      : filtered.map(s=>`
+        <tr class="${s.cancelled?'row-cancelled':''}">
+          <td class="mono">${fmtDate(s.date)}</td>
+          <td>${s.items.map(i=>i.qty+'× '+i.name).join(', ')}</td>
+          <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : `<span class="tag ${payTagClass(s.paymentMethod)}">${s.paymentMethod}</span>`}</td>
+          <td>${s.seller}</td>
+          <td class="mono">${fmtBRL(s.total)}</td>
+          <td><button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button></td>
+        </tr>`).join('');
+  } catch(err){
+    console.error(err);
+    showToast('Erro ao gerar relatório. Tente um período mais curto.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Gerar';
+  }
 }
 </script>
 </body>
