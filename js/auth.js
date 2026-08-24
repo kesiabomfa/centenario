@@ -14,7 +14,7 @@ export function initAuth(onLogin, onLogout) {
     erroEl.hidden = true;
     btnLogin.disabled = true;
     btnLogin.textContent = "Entrando…";
-    const email = document.getElementById("login-email").value.trim();
+    const email = document.getElementById("login-email").value.trim().toLowerCase();
     const senha = document.getElementById("login-senha").value;
     try {
       await signInWithEmailAndPassword(auth, email, senha);
