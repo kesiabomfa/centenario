@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Centenário · Livro de Caixa</title>
+<title>Centenário · Caixa e Estoque</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -48,9 +48,9 @@
   }
   .brandmark{ text-align:center; }
   .brandmark .num{
-    font-family:'Fraunces', serif; font-size:52px; letter-spacing:2px; color:var(--brass);
+    font-family:'Fraunces', serif; font-size:38px; letter-spacing:1px; color:var(--brass);
     border-top:1px solid var(--brass-dim); border-bottom:1px solid var(--brass-dim);
-    padding:4px 18px; display:inline-block;
+    padding:6px 20px; display:inline-block;
   }
   .brandmark .sub{ font-size:12px; letter-spacing:4px; text-transform:uppercase; color:var(--text-dim); margin-top:10px; }
   .ledger-card{
@@ -198,8 +198,8 @@
 <!-- ======================= LOGIN ======================= -->
 <div id="login-screen">
   <div class="brandmark">
-    <div class="num">Nº 100</div>
-    <div class="sub">Livro de Caixa &amp; Estoque</div>
+    <div class="num">Centenário</div>
+    <div class="sub">Caixa e Estoque</div>
   </div>
   <div class="ledger-card">
     <div class="field">
@@ -219,7 +219,7 @@
 <!-- ======================= APP ======================= -->
 <div id="app-screen">
   <header class="topbar">
-    <div class="logo-mini"><span class="num">Nº 100</span><span class="name">Centenário</span></div>
+    <div class="logo-mini"><span class="num">Centenário</span><span class="name">Caixa e Estoque</span></div>
     <div class="who">
       <span id="who-email">—</span>
       <button class="btn btn-ghost btn-sm" id="btn-logout">Sair</button>
@@ -435,12 +435,12 @@
    Veja o README.md para o passo a passo completo (é gratuito).
    ========================================================================= */
 const firebaseConfig = {
-  apiKey: "COLE_AQUI_SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyCeP-Crs2OoDdKCucnEQJBgJcEBhQN5-cE",
+  authDomain: "centenario-363ef.firebaseapp.com",
+  projectId: "centenario-363ef",
+  storageBucket: "centenario-363ef.firebasestorage.app",
+  messagingSenderId: "924613179259",
+  appId: "1:924613179259:web:29a2bfe07126cb66442fde"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -723,7 +723,7 @@ function showReceipt(sale){
   const el = document.getElementById('receipt-holder');
   el.innerHTML = `
     <div class="receipt">
-      <h3>Nº 100</h3>
+      <h3>Centenário</h3>
       <div class="sub">comprovante de venda</div>
       ${sale.items.map(i=>`<div class="rline"><span>${i.qty}× ${i.name}</span><span>${fmtBRL(i.subtotal)}</span></div>`).join('')}
       <hr>
