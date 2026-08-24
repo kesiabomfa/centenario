@@ -18,14 +18,18 @@
     <h1>Centenário</h1>
     <p class="login-sub">Painel de caixa &amp; estoque</p>
 
-    <form id="form-login" class="login-form">
+    <form id="form-login" class="login-form" autocomplete="off">
+      <!-- campos-isca: absorvem o autopreenchimento do navegador para que ele
+           não tente abrir sugestões em cima dos campos reais abaixo -->
+      <input type="text" name="fake-user" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1" autocomplete="off">
+      <input type="password" name="fake-pass" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1" autocomplete="off">
       <label>
         <span>E-mail</span>
-        <input type="email" id="login-email" required autocomplete="username" placeholder="admin@centenario.org">
+        <input type="text" inputmode="email" id="login-email" required autocomplete="off" spellcheck="false" placeholder="admin@centenario.org">
       </label>
       <label>
         <span>Senha</span>
-        <input type="password" id="login-senha" required autocomplete="current-password" placeholder="••••••••">
+        <input type="password" id="login-senha" required autocomplete="off" placeholder="••••••••">
       </label>
       <button type="submit" class="btn btn-primary btn-block" id="btn-login">Entrar</button>
       <p id="login-erro" class="login-erro" hidden></p>
