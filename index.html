@@ -8,39 +8,42 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16241c;
-    --ink-2:#1e3327;
-    --paper:#efe6d2;
-    --paper-dim:#e3d7bb;
-    --brass:#c79a3d;
-    --brass-dim:#a87f2c;
+    --bg:#f1ead8;
+    --panel:#ffffff;
+    --panel-alt:#fbf7ec;
+    --paper:#fbf6ea;
+    --paper-dim:#ddcfa6;
+    --border:#e6dcc0;
+    --ink:#2a2318;
+    --ink-2:#463a24;
+    --brass:#a9762b;
+    --brass-dim:#8a5f20;
     --stamp:#a63a32;
-    --text-on-ink:#ede7d9;
-    --text-dim:#b9c2ba;
-    --green-ok:#4c7a53;
+    --text-dim:#8a7f68;
+    --green-ok:#3f6b45;
     --radius:10px;
-    --shadow:0 6px 18px rgba(0,0,0,.35);
+    --shadow:0 6px 18px rgba(40,30,10,.12);
     font-size:16px;
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
-    background:var(--ink);
+    background:var(--bg);
     background-image:
-      radial-gradient(circle at 15% 10%, rgba(199,154,61,.06), transparent 40%),
-      radial-gradient(circle at 85% 90%, rgba(199,154,61,.05), transparent 45%);
-    color:var(--text-on-ink);
+      radial-gradient(circle at 15% 10%, rgba(169,118,43,.06), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(169,118,43,.05), transparent 45%);
+    color:var(--ink);
     font-family:'IBM Plex Sans', sans-serif;
     min-height:100vh;
   }
   h1,h2,h3{font-family:'Fraunces', serif; font-weight:600; margin:0 0 4px;}
   .mono{font-family:'IBM Plex Mono', monospace;}
-  ::selection{background:var(--brass); color:var(--ink);}
+  ::selection{background:var(--brass); color:#fff;}
   a{color:var(--brass);}
   button{font-family:inherit; cursor:pointer;}
   input, select{font-family:inherit;}
   ::-webkit-scrollbar{width:10px;}
-  ::-webkit-scrollbar-thumb{background:var(--ink-2); border-radius:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
 
   /* ---------- Login ---------- */
   #login-screen{
@@ -55,7 +58,7 @@
   .brandmark .sub{ font-size:12px; letter-spacing:4px; text-transform:uppercase; color:var(--text-dim); margin-top:10px; }
   .ledger-card{
     background:var(--paper); color:var(--ink); border-radius:var(--radius); box-shadow:var(--shadow);
-    padding:32px; width:100%; max-width:360px; position:relative;
+    padding:32px; width:100%; max-width:360px; position:relative; border:1px solid var(--paper-dim);
   }
   .ledger-card::before{
     content:""; position:absolute; left:0; top:22px; bottom:22px; width:2px;
@@ -74,13 +77,13 @@
   }
   .btn:hover{ background:var(--ink-2); }
   .btn:active{ transform:scale(.98); }
-  .btn-brass{ background:var(--brass); color:var(--ink); }
+  .btn-brass{ background:var(--brass); color:#fff; }
   .btn-brass:hover{ background:var(--brass-dim); }
   .btn-stamp{ background:var(--stamp); color:#fbf3ec; }
   .btn-stamp:hover{ background:#8a2f28; }
   .btn-block{ width:100%; }
-  .btn-ghost{ background:transparent; border:1px solid var(--paper-dim); color:var(--text-on-ink); }
-  .btn-ghost:hover{ background:rgba(239,230,210,.08); }
+  .btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--ink); }
+  .btn-ghost:hover{ background:rgba(169,118,43,.08); }
   .btn-sm{ padding:6px 10px; font-size:12px; border-radius:5px; }
   .error-msg{ color:var(--stamp); font-size:13px; margin-top:8px; min-height:16px; }
   .hint{ font-size:12px; color:var(--text-dim); text-align:center; max-width:320px; }
@@ -89,21 +92,21 @@
   #app-screen{ display:none; min-height:100vh; }
   header.topbar{
     display:flex; align-items:center; justify-content:space-between; padding:16px 24px;
-    border-bottom:1px solid var(--ink-2); position:sticky; top:0; background:var(--ink); z-index:10;
+    border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--panel); z-index:10;
   }
   .logo-mini{ display:flex; align-items:baseline; gap:10px; }
   .logo-mini .num{ font-family:'Fraunces',serif; color:var(--brass); font-size:22px; }
   .logo-mini .name{ font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--text-dim); }
   .who{ display:flex; align-items:center; gap:12px; font-size:13px; color:var(--text-dim); }
   nav.tabs{
-    display:flex; gap:2px; padding:0 20px; overflow-x:auto; border-bottom:1px solid var(--ink-2); background:var(--ink-2);
+    display:flex; gap:2px; padding:0 20px; overflow-x:auto; border-bottom:1px solid var(--border); background:var(--panel-alt);
   }
   nav.tabs button{
     background:transparent; border:none; color:var(--text-dim); padding:13px 18px; font-size:13.5px; font-weight:600;
     letter-spacing:.3px; border-bottom:2px solid transparent; white-space:nowrap;
   }
   nav.tabs button.active{ color:var(--brass); border-bottom-color:var(--brass); }
-  nav.tabs button:hover{ color:var(--text-on-ink); }
+  nav.tabs button:hover{ color:var(--ink); }
   main{ padding:26px 24px 60px; max-width:1100px; margin:0 auto; }
   section.view{ display:none; }
   section.view.active{ display:block; }
@@ -115,23 +118,23 @@
   @media(max-width:560px){ .grid-4{grid-template-columns:1fr;} }
 
   .stat-card{
-    background:var(--ink-2); border:1px solid rgba(199,154,61,.15); border-radius:var(--radius); padding:18px;
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);
   }
   .stat-card .label{ font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim); margin-bottom:8px; }
-  .stat-card .value{ font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:600; color:var(--text-on-ink); }
+  .stat-card .value{ font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:600; color:var(--ink); }
   .stat-card .value.brass{ color:var(--brass); }
-  .stat-card .value.stamp{ color:#e08279; }
+  .stat-card .value.stamp{ color:var(--stamp); }
 
   .panel{
-    background:var(--ink-2); border:1px solid rgba(199,154,61,.15); border-radius:var(--radius); padding:20px; margin-bottom:20px;
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:20px; box-shadow:var(--shadow);
   }
   .panel h2{ font-size:19px; margin-bottom:14px; }
   .panel h2 .count{ font-family:'IBM Plex Mono'; font-size:13px; color:var(--text-dim); font-weight:400; }
 
   table{ width:100%; border-collapse:collapse; font-size:13.5px; }
-  th{ text-align:left; padding:8px 10px; color:var(--text-dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--ink); font-weight:600; }
-  td{ padding:9px 10px; border-bottom:1px solid rgba(239,230,210,.06); }
-  tr:hover td{ background:rgba(239,230,210,.03); }
+  th{ text-align:left; padding:8px 10px; color:var(--text-dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); font-weight:600; }
+  td{ padding:9px 10px; border-bottom:1px solid var(--border); }
+  tr:hover td{ background:rgba(169,118,43,.05); }
   .tag{ display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:.3px; }
   .tag-pix{ background:#2b6b57; color:#c9f2e4; }
   .tag-dinheiro{ background:#4c6b2b; color:#e2f2c9; }
@@ -139,24 +142,24 @@
   .tag-credito{ background:#6b402b; color:#f2d9c9; }
   .tag-entrada{ background:#2b6b57; color:#c9f2e4; }
   .tag-saida{ background:#6b2b2b; color:#f2c9c9; }
-  .low-stock{ color:#e08279; font-weight:600; }
+  .low-stock{ color:var(--stamp); font-weight:600; }
 
   .row-flex{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
   .row-flex .field{ margin-bottom:0; flex:1; min-width:140px; }
 
-  .cart-item{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px dashed rgba(239,230,210,.15); font-size:13.5px; }
+  .cart-item{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px dashed var(--paper-dim); font-size:13.5px; }
   .cart-item .name{ flex:1; }
   .cart-item .qty-ctl{ display:flex; align-items:center; gap:6px; }
-  .cart-item .qty-ctl button{ width:22px; height:22px; border-radius:4px; border:1px solid var(--paper-dim); background:transparent; color:var(--text-on-ink); font-size:13px; line-height:1;}
+  .cart-item .qty-ctl button{ width:22px; height:22px; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--ink); font-size:13px; line-height:1;}
   .paymethod-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
   @media(max-width:560px){ .paymethod-grid{grid-template-columns:repeat(2,1fr);} }
   .pay-btn{
-    padding:14px 8px; border-radius:8px; border:1.5px solid var(--paper-dim); background:transparent; color:var(--text-on-ink);
+    padding:14px 8px; border-radius:8px; border:1.5px solid var(--border); background:transparent; color:var(--ink);
     font-weight:600; font-size:13px; text-align:center;
   }
-  .pay-btn.selected{ border-color:var(--brass); background:rgba(199,154,61,.12); color:var(--brass); }
+  .pay-btn.selected{ border-color:var(--brass); background:rgba(169,118,43,.12); color:var(--brass); }
   .modal .pay-btn{ border-color:#cfc19a; color:var(--ink); }
-  .modal .pay-btn.selected{ border-color:var(--brass-dim); background:rgba(199,154,61,.18); color:var(--brass-dim); }
+  .modal .pay-btn.selected{ border-color:var(--brass-dim); background:rgba(169,118,43,.18); color:var(--brass-dim); }
   .tag-cancelada{ background:#5a2323; color:#f2c9c9; }
   .row-cancelled td{ opacity:.55; text-decoration:line-through; }
   .link-btn{ background:none; border:none; color:var(--brass); font-size:12.5px; font-weight:600; padding:0; text-decoration:underline; }
@@ -164,7 +167,7 @@
 
   .receipt{
     background:var(--paper); color:var(--ink); border-radius:6px; padding:22px; max-width:340px; margin:20px auto 0;
-    font-family:'IBM Plex Mono', monospace; font-size:13px; position:relative;
+    font-family:'IBM Plex Mono', monospace; font-size:13px; position:relative; border:1px solid var(--paper-dim);
     clip-path: polygon(0% 0%, 100% 0%, 100% 97%, 95% 100%, 90% 97%, 85% 100%, 80% 97%, 75% 100%, 70% 97%, 65% 100%, 60% 97%, 55% 100%, 50% 97%, 45% 100%, 40% 97%, 35% 100%, 30% 97%, 25% 100%, 20% 97%, 15% 100%, 10% 97%, 5% 100%, 0% 97%);
     padding-bottom:34px;
   }
@@ -180,52 +183,61 @@
   .toast{
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--paper); color:var(--ink);
     padding:12px 20px; border-radius:8px; box-shadow:var(--shadow); font-size:13.5px; font-weight:600; opacity:0; transition:all .25s ease; z-index:100;
+    border:1px solid var(--paper-dim);
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
-  .modal-bg{ position:fixed; inset:0; background:rgba(10,15,12,.7); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .modal-bg{ position:fixed; inset:0; background:rgba(30,24,14,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
   .modal-bg.show{ display:flex; }
-  .modal{ background:var(--paper); color:var(--ink); border-radius:var(--radius); padding:26px; width:100%; max-width:420px; max-height:90vh; overflow-y:auto; }
+  .modal{ background:var(--paper); color:var(--ink); border-radius:var(--radius); padding:26px; width:100%; max-width:420px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow); border:1px solid var(--paper-dim); }
   .modal h3{ font-size:18px; margin-bottom:16px; }
   .modal .field label{ color:#5a5140; }
   .close-x{ float:right; background:none; border:none; font-size:18px; color:#5a5140; }
 
-  select#pay-filter, select.filter-select{ background:var(--ink-2); color:var(--text-on-ink); border:1px solid var(--paper-dim); border-radius:6px; padding:8px 10px; }
+  select#pay-filter, select.filter-select{ background:var(--panel); color:var(--ink); border:1px solid var(--border); border-radius:6px; padding:8px 10px; }
 
   /* ---------- cards de produto ---------- */
   #product-search{
-    background:var(--ink); color:var(--text-on-ink); border:1px solid var(--paper-dim); border-radius:6px;
+    background:var(--panel); color:var(--ink); border:1px solid var(--border); border-radius:6px;
     padding:8px 12px; font-size:13.5px; max-width:220px; width:100%;
   }
   #product-search:focus{ outline:2px solid var(--brass); outline-offset:1px; }
   .product-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(148px,1fr)); gap:10px; }
   .product-card{
-    border:1px solid rgba(239,230,210,.14); border-radius:8px; padding:12px; background:var(--ink);
-    text-align:left; cursor:pointer; transition:border-color .15s ease, transform .1s ease;
+    border:1px solid var(--border); border-radius:8px; padding:12px; background:var(--panel);
+    text-align:left; cursor:pointer; transition:border-color .15s ease, transform .1s ease, box-shadow .15s ease;
   }
-  .product-card:hover:not(.disabled){ border-color:var(--brass); transform:translateY(-1px); }
+  .product-card:hover:not(.disabled){ border-color:var(--brass); transform:translateY(-1px); box-shadow:0 4px 10px rgba(40,30,10,.08); }
   .product-card:active:not(.disabled){ transform:translateY(0); }
-  .product-card .pname{ font-weight:600; font-size:13.5px; margin-bottom:5px; line-height:1.25; }
+  .product-card .pname{ font-weight:600; font-size:13.5px; margin-bottom:5px; line-height:1.25; color:var(--ink); }
   .product-card .pmeta{ display:flex; justify-content:space-between; gap:6px; font-size:10.5px; color:var(--text-dim); margin-bottom:8px; }
   .product-card .pprice{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--brass); font-size:14px; }
-  .product-card.disabled{ opacity:.4; cursor:not-allowed; }
+  .product-card.disabled{ opacity:.55; cursor:not-allowed; background:var(--panel-alt); }
   .product-card.disabled .pprice{ color:var(--text-dim); }
+  .product-card.presale{ border-color:var(--brass-dim); border-style:dashed; }
   .product-empty{ grid-column:1/-1; }
 
   /* ---------- linhas de pagamento (dividir pagamento) ---------- */
-  .payment-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .payment-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
   .payment-row select{
-    flex:1.1; background:var(--ink); color:var(--text-on-ink); border:1px solid var(--paper-dim);
-    border-radius:6px; padding:9px 8px; font-size:13px;
+    flex:1.1; background:var(--panel); color:var(--ink); border:1px solid var(--border);
+    border-radius:6px; padding:9px 8px; font-size:13px; min-width:100px;
   }
   .payment-row input{
-    flex:1; width:0; background:var(--ink); color:var(--text-on-ink); border:1px solid var(--paper-dim);
+    flex:1; width:0; min-width:80px; background:var(--panel); color:var(--ink); border:1px solid var(--border);
     border-radius:6px; padding:9px 10px; font-size:13px; font-family:'IBM Plex Mono', monospace;
   }
-  .payment-row .remove-pay{ background:none; border:none; color:#e08279; font-size:16px; padding:0 2px; flex:0 0 auto; }
+  .payment-row .remove-pay{ background:none; border:none; color:var(--stamp); font-size:16px; padding:0 2px; flex:0 0 auto; }
   .payment-row .remove-pay:disabled{ opacity:.25; cursor:not-allowed; }
-  #pay-remaining.ok{ color:var(--green-ok); }
-  #pay-remaining.pending{ color:#e08279; }
+  #pay-remaining.ok, #sale-modal-remaining.ok{ color:var(--green-ok); }
+  #pay-remaining.pending, #sale-modal-remaining.pending{ color:var(--stamp); }
+
+  /* ---------- pré-venda ---------- */
+  .tag-presale{ background:#6b5b2b; color:#f2e6c9; }
+  .presale-banner{
+    background:rgba(169,118,43,.10); border:1px dashed var(--brass-dim); border-radius:8px;
+    padding:10px 12px; font-size:12.5px; color:var(--brass-dim); margin-bottom:12px; display:none;
+  }
 </style>
 </head>
 <body>
@@ -266,6 +278,7 @@
     <button data-view="venda">Nova venda</button>
     <button data-view="estoque">Estoque</button>
     <button data-view="movimentacoes">Movimentações</button>
+    <button data-view="presales">Pré-vendas</button>
     <button data-view="relatorios">Relatórios</button>
   </nav>
 
@@ -330,10 +343,6 @@
           </div>
           <div id="pay-remaining" style="margin:12px 0 4px; font-size:13px; font-weight:600;"></div>
 
-          <div class="field" style="margin-top:10px;">
-            <label>Observação (opcional)</label>
-            <input id="sale-note" type="text" placeholder="Ex: cliente Maria">
-          </div>
           <button class="btn btn-stamp btn-block" id="btn-finish-sale" style="margin-top:12px;">Finalizar venda</button>
           <div id="receipt-holder"></div>
         </div>
@@ -403,6 +412,24 @@
         <table>
           <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd.</th><th>Motivo</th><th>Usuário</th></tr></thead>
           <tbody id="movements-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- PRÉ-VENDAS ---------- -->
+    <section class="view" id="view-presales">
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+          <h2 style="margin:0;">Pré-vendas <span class="count" id="presales-count"></span></h2>
+        </div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;">
+          Vendas de produtos sem estoque no momento, a serem produzidos/entregues depois.
+          Quando o produto estiver pronto, registre a entrada normalmente em
+          <strong>Movimentações</strong> e marque a pré-venda como entregue aqui.
+        </div>
+        <table>
+          <thead><tr><th>Data</th><th>Itens em pré-venda</th><th>Vendedor</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <tbody id="presales-table"></tbody>
         </table>
       </div>
     </section>
@@ -577,7 +604,7 @@ function salePayments(sale){
   return [];
 }
 function paymentsTagsHtml(sale){
-  return salePayments(sale).map(p=>`<span class="tag ${payTagClass(p.method)}" style="margin:1px 4px 1px 0; display:inline-block;">${p.method} ${fmtBRL(p.amount)}</span>`).join('');
+  return salePayments(sale).map(p=>`<span class="tag ${payTagClass(p.method)}" style="margin:1px 4px 1px 0; display:inline-block;">${paymentLabel(p)} ${fmtBRL(p.amount)}</span>`).join('');
 }
 function parseBRLInput(str){
   if(!str) return 0;
@@ -655,6 +682,7 @@ function attachListeners(){
     renderDashboard();
     renderRecentSales();
     renderTodaySales();
+    renderPresales();
   });
   unsubMov = db.collection('movements').orderBy('date','desc').limit(500).onSnapshot(snap=>{
     movements = snap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -817,9 +845,9 @@ function renderProductGrid(){
   grid.innerHTML = list.map(p=>{
     const out = p.stock<=0;
     return `
-    <button type="button" class="product-card ${out?'disabled':''}" ${out?'disabled':''} onclick="addProductToCart('${p.id}')">
+    <button type="button" class="product-card ${out?'presale':''}" onclick="addProductToCart('${p.id}')">
       <div class="pname">${p.name}</div>
-      <div class="pmeta"><span>${p.category||'—'}</span><span>${out?'esgotado':'saldo '+p.stock}</span></div>
+      <div class="pmeta"><span>${p.category||'—'}</span><span>${out?'pré-venda':'saldo '+p.stock}</span></div>
       <div class="pprice">${fmtBRL(p.salePrice)}</div>
     </button>`;
   }).join('');
@@ -828,10 +856,14 @@ function renderProductGrid(){
 function addProductToCart(pid){
   const p = products.find(x=>x.id===pid);
   if(!p) return;
+  const isPresale = p.stock<=0;
   const existing = cart.find(c=>c.productId===pid);
-  const currentQty = existing ? existing.qty : 0;
-  if(currentQty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
-  if(existing){ existing.qty += 1; } else { cart.push({productId:pid, name:p.name, category:p.category||'', unitPrice:p.salePrice, qty:1}); }
+  if(!isPresale){
+    const currentQty = existing ? existing.qty : 0;
+    if(currentQty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
+  }
+  if(existing){ existing.qty += 1; } else { cart.push({productId:pid, name:p.name, category:p.category||'', unitPrice:p.salePrice, qty:1, presale:isPresale}); }
+  if(isPresale) showToast(`"${p.name}" está sem estoque — adicionado como pré-venda.`);
   renderCart();
 }
 
@@ -842,13 +874,13 @@ function renderCart(){
   } else {
     el.innerHTML = cart.map((c,i)=>`
       <div class="cart-item">
-        <div class="name">${c.name}<br><span class="mono" style="color:var(--text-dim); font-size:11.5px;">${c.category?c.category+' · ':''}${fmtBRL(c.unitPrice)} un.</span></div>
+        <div class="name">${c.name}${c.presale?' <span class="tag tag-presale" style="font-size:9.5px; padding:1px 6px; vertical-align:middle;">pré-venda</span>':''}<br><span class="mono" style="color:var(--text-dim); font-size:11.5px;">${c.category?c.category+' · ':''}${fmtBRL(c.unitPrice)} un.</span></div>
         <div class="qty-ctl">
           <button onclick="changeCartQty(${i},-1)">−</button>
           <span class="mono">${c.qty}</span>
           <button onclick="changeCartQty(${i},1)">+</button>
           <span class="mono" style="margin-left:8px; min-width:66px; text-align:right; display:inline-block;">${fmtBRL(c.unitPrice*c.qty)}</span>
-          <button onclick="removeCartItem(${i})" style="margin-left:6px;color:#e08279;">✕</button>
+          <button onclick="removeCartItem(${i})" style="margin-left:6px;color:var(--stamp);">✕</button>
         </div>
       </div>`).join('');
   }
@@ -859,7 +891,7 @@ function renderCart(){
 function changeCartQty(i, delta){
   const c = cart[i];
   const p = products.find(x=>x.id===c.productId);
-  if(delta>0 && p && c.qty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
+  if(delta>0 && !c.presale && p && c.qty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
   c.qty += delta;
   if(c.qty<=0) cart.splice(i,1);
   renderCart();
@@ -868,13 +900,28 @@ function removeCartItem(i){ cart.splice(i,1); renderCart(); }
 document.getElementById('btn-clear-cart').addEventListener('click', ()=>{
   cart = [];
   paymentRows = [{method:'Pix', amount:0}];
-  document.getElementById('sale-note').value = '';
   const cashEl = document.getElementById('cash-received'); if(cashEl) cashEl.value='';
   document.getElementById('receipt-holder').innerHTML = '';
   renderCart();
 });
 
 /* -------- pagamento dividido (várias formas na mesma venda) -------- */
+const INSTALLMENT_OPTIONS = [1,2,3,4,5,6];
+function installmentSelectHtml(i, row, isModal){
+  const val = row.installments || 1;
+  const isCustom = !INSTALLMENT_OPTIONS.includes(val);
+  const setFn = isModal ? 'setModalPaymentInstallments' : 'setPaymentInstallments';
+  const setCustomFn = isModal ? 'setModalPaymentInstallmentsCustom' : 'setPaymentInstallmentsCustom';
+  return `
+    <div class="payment-row" style="margin-top:-4px;">
+      <select style="max-width:180px;" onchange="${setFn}(${i}, this.value)">
+        ${INSTALLMENT_OPTIONS.map(n=>`<option value="${n}" ${!isCustom && val===n ? 'selected':''}>${n===1?'À vista':n+'x sem juros'}</option>`).join('')}
+        <option value="outras" ${isCustom?'selected':''}>Outras vezes...</option>
+      </select>
+      ${isCustom ? `<input type="number" min="2" style="max-width:90px;" value="${val}" placeholder="nº de vezes" onchange="${setCustomFn}(${i}, this.value)">` : ''}
+    </div>`;
+}
+
 function renderPaymentRows(){
   const box = document.getElementById('payment-rows');
   box.innerHTML = paymentRows.map((r,i)=>`
@@ -884,7 +931,8 @@ function renderPaymentRows(){
       </select>
       <input type="text" inputmode="decimal" value="${r.amount ? String(r.amount).replace('.',',') : ''}" placeholder="0,00" onchange="setPaymentAmount(${i}, this.value)">
       <button class="remove-pay" ${paymentRows.length<=1?'disabled':''} onclick="removePaymentRow(${i})">✕</button>
-    </div>`).join('');
+    </div>
+    ${r.method==='Crédito' ? installmentSelectHtml(i, r, false) : ''}`).join('');
 
   const hasCash = paymentRows.some(r=>r.method==='Dinheiro');
   document.getElementById('cash-change-box').style.display = hasCash ? 'block' : 'none';
@@ -908,8 +956,14 @@ function renderPaymentRows(){
     remEl.textContent = `Valor alocado a mais: ${fmtBRL(Math.abs(remaining))}`; remEl.className = 'pending';
   }
 }
-function setPaymentMethod(i, value){ paymentRows[i].method = value; renderPaymentRows(); }
+function setPaymentMethod(i, value){
+  paymentRows[i].method = value;
+  if(value==='Crédito' && !paymentRows[i].installments) paymentRows[i].installments = 1;
+  renderPaymentRows();
+}
 function setPaymentAmount(i, value){ paymentRows[i].amount = round2(parseBRLInput(value)); renderPaymentRows(); }
+function setPaymentInstallments(i, value){ paymentRows[i].installments = value==='outras' ? 7 : parseInt(value); renderPaymentRows(); }
+function setPaymentInstallmentsCustom(i, value){ paymentRows[i].installments = Math.max(parseInt(value)||2,2); renderPaymentRows(); }
 function removePaymentRow(i){
   if(paymentRows.length<=1) return;
   paymentRows.splice(i,1);
@@ -921,7 +975,7 @@ document.getElementById('btn-add-payment').addEventListener('click', ()=>{
   const remaining = Math.max(round2(cartTotal() - allocated), 0);
   const used = paymentRows.map(r=>r.method);
   const next = PAY_METHODS.find(m=>!used.includes(m)) || 'Dinheiro';
-  paymentRows.push({method: next, amount: remaining});
+  paymentRows.push({method: next, amount: remaining, installments:1});
   renderPaymentRows();
 });
 document.getElementById('cash-received').addEventListener('input', renderPaymentRows);
@@ -931,7 +985,10 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
   const total = round2(cartTotal());
   const allocated = round2(paymentRows.reduce((s,r)=>s+(r.amount||0),0));
   if(Math.abs(total-allocated) >= 0.01){ showToast('A soma das formas de pagamento precisa fechar com o total da venda.'); return; }
-  const paymentsClean = paymentRows.filter(r=>r.amount>0).map(r=>({method:r.method, amount:round2(r.amount)}));
+  const paymentsClean = paymentRows.filter(r=>r.amount>0).map(r=>({
+    method:r.method, amount:round2(r.amount),
+    ...(r.method==='Crédito' ? {installments:r.installments||1} : {})
+  }));
   if(paymentsClean.length===0){ showToast('Informe ao menos uma forma de pagamento.'); return; }
 
   const cashRow = paymentsClean.find(r=>r.method==='Dinheiro');
@@ -942,20 +999,23 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     changeGiven = round2(cashReceived - cashRow.amount);
   }
 
+  const hasPresale = cart.some(c=>c.presale);
   const saleData = {
     date: firebase.firestore.FieldValue.serverTimestamp(),
-    items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:round2(c.unitPrice*c.qty)})),
+    items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:round2(c.unitPrice*c.qty), presale: !!c.presale})),
     total,
     payments: paymentsClean,
     cashReceived, changeGiven,
     seller: emailParaUsuario(currentUser.email),
-    note: document.getElementById('sale-note').value.trim()
+    hasPresale,
+    presaleStatus: hasPresale ? 'pendente' : null
   };
   try{
     const batch = db.batch();
     const saleRef = db.collection('sales').doc();
     batch.set(saleRef, saleData);
     cart.forEach(c=>{
+      if(c.presale) return; // pré-venda: produto ainda não existe em estoque, nada a descontar
       const p = products.find(x=>x.id===c.productId);
       const ref = db.collection('products').doc(c.productId);
       batch.update(ref, {stock: (p.stock - c.qty)});
@@ -964,15 +1024,24 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     showReceipt(saleData);
     cart = [];
     paymentRows = [{method:'Pix', amount:0}];
-    document.getElementById('sale-note').value='';
     document.getElementById('cash-received').value='';
     renderCart();
-    showToast('Venda registrada.');
+    showToast(hasPresale ? 'Venda registrada (com item em pré-venda).' : 'Venda registrada.');
   } catch(err){
     console.error(err);
     showToast('Erro ao registrar a venda.');
   }
 });
+
+function paymentLabel(p){
+  if(p.method==='Crédito'){
+    return p.method + (p.installments && p.installments>1 ? ` ${p.installments}x` : ' à vista');
+  }
+  return p.method;
+}
+function itemsSummary(items){
+  return items.map(i=> i.qty+'× '+i.name + (i.presale?' (pré-venda)':'')).join(', ');
+}
 
 function showReceipt(sale){
   const el = document.getElementById('receipt-holder');
@@ -980,10 +1049,10 @@ function showReceipt(sale){
     <div class="receipt">
       <h3>Centenário</h3>
       <div class="sub">comprovante de venda</div>
-      ${sale.items.map(i=>`<div class="rline"><span>${i.qty}× ${i.name}</span><span>${fmtBRL(i.subtotal)}</span></div>`).join('')}
+      ${sale.items.map(i=>`<div class="rline"><span>${i.qty}× ${i.name}${i.presale?' (pré-venda)':''}</span><span>${fmtBRL(i.subtotal)}</span></div>`).join('')}
       <hr>
       <div class="rline total"><span>TOTAL</span><span>${fmtBRL(sale.total)}</span></div>
-      ${sale.payments.map(p=>`<div class="rline"><span>${p.method}</span><span>${fmtBRL(p.amount)}</span></div>`).join('')}
+      ${sale.payments.map(p=>`<div class="rline"><span>${paymentLabel(p)}</span><span>${fmtBRL(p.amount)}</span></div>`).join('')}
       ${sale.changeGiven ? `<div class="rline"><span>Troco</span><span>${fmtBRL(sale.changeGiven)}</span></div>` : ''}
       <div class="rline"><span>Vendedor</span><span>${sale.seller}</span></div>
     </div>`;
@@ -1010,13 +1079,55 @@ function renderTodaySales(){
     return `
     <tr class="${s.cancelled?'row-cancelled':''}">
       <td class="mono">${hora}</td>
-      <td>${s.items.map(i=>i.qty+'× '+i.name).join(', ')}</td>
+      <td>${itemsSummary(s.items)}</td>
       <td class="mono">${qty}</td>
       <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : paymentsTagsHtml(s)}</td>
       <td class="mono">${fmtBRL(s.total)}</td>
       <td><button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button></td>
     </tr>`;
   }).join('');
+}
+
+/* ---------------------------- pré-vendas ------------------------------- */
+function renderPresales(){
+  const tbody = document.getElementById('presales-table');
+  const list = sales.filter(s=>s.hasPresale && !s.cancelled)
+    .sort((a,b)=> (b.date?.toMillis?.()||0) - (a.date?.toMillis?.()||0));
+  const pending = list.filter(s=>s.presaleStatus!=='entregue');
+  document.getElementById('presales-count').textContent = `(${pending.length} pendente${pending.length===1?'':'s'})`;
+
+  if(list.length===0){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="glyph">🔧</div>Nenhuma pré-venda registrada</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(s=>{
+    const presaleItems = s.items.filter(i=>i.presale);
+    const done = s.presaleStatus==='entregue';
+    return `
+    <tr>
+      <td class="mono">${fmtDate(s.date)}</td>
+      <td>${itemsSummary(presaleItems)}</td>
+      <td>${s.seller}</td>
+      <td class="mono">${fmtBRL(s.total)}</td>
+      <td>${done ? '<span class="tag" style="background:#2b6b57;color:#c9f2e4;">Entregue</span>' : '<span class="tag tag-presale">Pendente</span>'}</td>
+      <td>${done ? `<button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button>` : `<button class="link-btn" onclick="markPresaleFulfilled('${s.id}')">marcar como entregue</button>`}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function markPresaleFulfilled(saleId){
+  if(!confirm('Marcar esta pré-venda como produzida/entregue? Lembre-se de registrar a entrada do produto no estoque em Movimentações, se ainda não fez.')) return;
+  try{
+    await db.collection('sales').doc(saleId).update({
+      presaleStatus: 'entregue',
+      presaleFulfilledAt: firebase.firestore.FieldValue.serverTimestamp(),
+      presaleFulfilledBy: emailParaUsuario(currentUser.email)
+    });
+    showToast('Pré-venda marcada como entregue.');
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao atualizar a pré-venda.');
+  }
 }
 
 /* --------------------------- movimentações ------------------------------- */
@@ -1073,8 +1184,8 @@ function openSaleModal(saleId){
   if(!s) return;
   currentSaleModalId = saleId;
   document.getElementById('sale-modal-items').innerHTML = s.items.map(i=>
-    `<div class="rline" style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${i.qty}× ${i.name}</span><span class="mono">${fmtBRL(i.subtotal)}</span></div>`
-  ).join('') + (s.note ? `<div style="margin-top:8px; font-style:italic; color:#5a5140;">"${s.note}"</div>` : '');
+    `<div class="rline" style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${i.qty}× ${i.name}${i.presale?' <span class="tag tag-presale" style="font-size:9px; padding:1px 6px;">pré-venda</span>':''}</span><span class="mono">${fmtBRL(i.subtotal)}</span></div>`
+  ).join('');
   document.getElementById('sale-modal-total').textContent = fmtBRL(s.total);
 
   const activeBox = document.getElementById('sale-modal-active');
@@ -1088,7 +1199,7 @@ function openSaleModal(saleId){
   } else {
     activeBox.style.display = 'block';
     cancelledMsg.style.display = 'none';
-    modalPaymentRows = salePayments(s).map(p=>({method:p.method, amount:p.amount}));
+    modalPaymentRows = salePayments(s).map(p=>({method:p.method, amount:p.amount, installments:p.installments||1}));
     if(modalPaymentRows.length===0) modalPaymentRows = [{method:'Pix', amount:s.total}];
     const cashEl = document.getElementById('sale-modal-cash-received');
     cashEl.value = s.cashReceived ? String(s.cashReceived).replace('.',',') : '';
@@ -1106,7 +1217,8 @@ function renderModalPaymentRows(saleTotal){
       </select>
       <input type="text" inputmode="decimal" value="${r.amount ? String(r.amount).replace('.',',') : ''}" placeholder="0,00" onchange="setModalPaymentAmount(${i}, this.value, ${saleTotal})">
       <button class="remove-pay" ${modalPaymentRows.length<=1?'disabled':''} onclick="removeModalPaymentRow(${i}, ${saleTotal})">✕</button>
-    </div>`).join('');
+    </div>
+    ${r.method==='Crédito' ? installmentSelectHtml(i, r, true) : ''}`).join('');
 
   const hasCash = modalPaymentRows.some(r=>r.method==='Dinheiro');
   document.getElementById('sale-modal-cash-box').style.display = hasCash ? 'block' : 'none';
@@ -1129,10 +1241,21 @@ function renderModalPaymentRows(saleTotal){
 }
 function setModalPaymentMethod(i, value){
   modalPaymentRows[i].method = value;
+  if(value==='Crédito' && !modalPaymentRows[i].installments) modalPaymentRows[i].installments = 1;
   const s = sales.find(x=>x.id===currentSaleModalId);
   renderModalPaymentRows(s ? s.total : 0);
 }
 function setModalPaymentAmount(i, value, saleTotal){ modalPaymentRows[i].amount = round2(parseBRLInput(value)); renderModalPaymentRows(saleTotal); }
+function setModalPaymentInstallments(i, value){
+  modalPaymentRows[i].installments = value==='outras' ? 7 : parseInt(value);
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  renderModalPaymentRows(s ? s.total : 0);
+}
+function setModalPaymentInstallmentsCustom(i, value){
+  modalPaymentRows[i].installments = Math.max(parseInt(value)||2,2);
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  renderModalPaymentRows(s ? s.total : 0);
+}
 function removeModalPaymentRow(i, saleTotal){
   if(modalPaymentRows.length<=1) return;
   modalPaymentRows.splice(i,1);
@@ -1145,7 +1268,7 @@ document.getElementById('btn-modal-add-payment').addEventListener('click', ()=>{
   const remaining = Math.max(round2(s.total - allocated), 0);
   const used = modalPaymentRows.map(r=>r.method);
   const next = PAY_METHODS.find(m=>!used.includes(m)) || 'Dinheiro';
-  modalPaymentRows.push({method: next, amount: remaining});
+  modalPaymentRows.push({method: next, amount: remaining, installments:1});
   renderModalPaymentRows(s.total);
 });
 document.getElementById('sale-modal-cash-received').addEventListener('input', ()=>{
@@ -1159,7 +1282,10 @@ document.getElementById('btn-save-payment').addEventListener('click', async ()=>
   if(!s) return;
   const allocated = round2(modalPaymentRows.reduce((sum,r)=>sum+(r.amount||0),0));
   if(Math.abs(s.total - allocated) >= 0.01){ showToast('A soma das formas de pagamento precisa fechar com o total da venda.'); return; }
-  const paymentsClean = modalPaymentRows.filter(r=>r.amount>0).map(r=>({method:r.method, amount:round2(r.amount)}));
+  const paymentsClean = modalPaymentRows.filter(r=>r.amount>0).map(r=>({
+    method:r.method, amount:round2(r.amount),
+    ...(r.method==='Crédito' ? {installments:r.installments||1} : {})
+  }));
   if(paymentsClean.length===0){ showToast('Informe ao menos uma forma de pagamento.'); return; }
 
   const cashRow = paymentsClean.find(r=>r.method==='Dinheiro');
@@ -1190,10 +1316,11 @@ document.getElementById('btn-cancel-sale').addEventListener('click', async ()=>{
   if(!currentSaleModalId) return;
   const s = sales.find(x=>x.id===currentSaleModalId);
   if(!s || s.cancelled) return;
-  if(!confirm(`Cancelar esta venda de ${fmtBRL(s.total)}? O estoque dos itens será devolvido automaticamente.`)) return;
+  if(!confirm(`Cancelar esta venda de ${fmtBRL(s.total)}? O estoque dos itens (exceto pré-vendas) será devolvido automaticamente.`)) return;
   try{
     const batch = db.batch();
     s.items.forEach(it=>{
+      if(it.presale) return; // pré-venda nunca teve estoque descontado
       const p = products.find(pp=>pp.id===it.productId);
       const ref = db.collection('products').doc(it.productId);
       const novoEstoque = (p ? p.stock : 0) + it.qty;
@@ -1250,7 +1377,7 @@ function renderRecentSales(){
     ${recent.map(s=>`
       <tr class="${s.cancelled?'row-cancelled':''}">
         <td class="mono">${fmtDate(s.date)}</td>
-        <td>${s.items.map(i=>i.qty+'× '+i.name).join(', ')}</td>
+        <td>${itemsSummary(s.items)}</td>
         <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : paymentsTagsHtml(s)}</td>
         <td>${s.seller}</td>
         <td class="mono">${fmtBRL(s.total)}</td>
@@ -1341,7 +1468,7 @@ async function runReport(){
       : filtered.map(s=>`
         <tr class="${s.cancelled?'row-cancelled':''}">
           <td class="mono">${fmtDate(s.date)}</td>
-          <td>${s.items.map(i=>i.qty+'× '+i.name).join(', ')}</td>
+          <td>${itemsSummary(s.items)}</td>
           <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : paymentsTagsHtml(s)}</td>
           <td>${s.seller}</td>
           <td class="mono">${fmtBRL(s.total)}</td>
