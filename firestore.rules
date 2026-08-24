@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Só quem estiver logado (o admin) pode ler e gravar qualquer coisa.
+    // Não existe cadastro público — o único usuário é criado manualmente
+    // no console do Firebase (veja SETUP.md).
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

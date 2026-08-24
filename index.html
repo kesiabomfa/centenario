@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centenário · Caixa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ===================== TELA DE LOGIN ===================== -->
+<div id="tela-login" class="login-wrap">
+  <div class="login-card">
+    <div class="selo">100</div>
+    <h1>Centenário</h1>
+    <p class="login-sub">Painel de caixa &amp; estoque</p>
+
+    <form id="form-login" class="login-form">
+      <label>
+        <span>E-mail</span>
+        <input type="email" id="login-email" required autocomplete="username" placeholder="admin@centenario.org">
+      </label>
+      <label>
+        <span>Senha</span>
+        <input type="password" id="login-senha" required autocomplete="current-password" placeholder="••••••••">
+      </label>
+      <button type="submit" class="btn btn-primary btn-block" id="btn-login">Entrar</button>
+      <p id="login-erro" class="login-erro" hidden></p>
+    </form>
+    <p class="login-rodape">Acesso restrito · uso interno</p>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app" class="app" hidden>
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="selo selo-sm">100</span>
+      <div>
+        <strong>Centenário</strong>
+        <span class="topbar-sub">caixa &amp; estoque</span>
+      </div>
+    </div>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="caixa">Caixa</button>
+      <button class="tab-btn" data-tab="estoque">Estoque</button>
+      <button class="tab-btn" data-tab="produtos">Produtos</button>
+      <button class="tab-btn" data-tab="relatorios">Relatórios</button>
+      <button class="tab-btn" data-tab="fechamentos">Fechamentos</button>
+    </nav>
+
+    <div class="topbar-user">
+      <span id="user-email" class="user-email"></span>
+      <button class="btn btn-ghost btn-sm" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- ---------- CAIXA (venda rápida) ---------- -->
+    <section id="tab-caixa" class="tab-panel active">
+      <div id="caixa-fechado-aviso" class="banner banner-warn" hidden>
+        <div>
+          <strong>O caixa do dia ainda não foi aberto.</strong>
+          <span>Informe o valor inicial em dinheiro para começar a registrar vendas.</span>
+        </div>
+        <button class="btn btn-primary" id="btn-abrir-caixa">Abrir caixa</button>
+      </div>
+
+      <div class="caixa-grid">
+        <!-- produtos -->
+        <div class="card">
+          <div class="card-head">
+            <h2>Produtos</h2>
+            <input type="search" id="busca-produto" placeholder="Buscar produto…">
+          </div>
+          <div id="grid-produtos" class="grid-produtos"></div>
+        </div>
+
+        <!-- carrinho / pagamento -->
+        <div class="card carrinho-card">
+          <div class="card-head">
+            <h2>Venda atual</h2>
+            <button class="btn btn-ghost btn-sm" id="btn-limpar-carrinho">Limpar</button>
+          </div>
+
+          <div id="lista-carrinho" class="lista-carrinho">
+            <p class="vazio">Nenhum item adicionado.</p>
+          </div>
+
+          <div class="carrinho-total">
+            <span>Total</span>
+            <strong id="carrinho-total-valor">R$ 0,00</strong>
+          </div>
+
+          <div class="pagamentos-wrap">
+            <div class="pagamentos-head">
+              <h3>Forma de pagamento</h3>
+              <button class="btn btn-ghost btn-sm" id="btn-add-pagamento" type="button">+ adicionar</button>
+            </div>
+            <div id="lista-pagamentos"></div>
+            <div class="pagamento-resumo">
+              <span>Falta alocar</span>
+              <strong id="pagamento-restante">R$ 0,00</strong>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block btn-lg" id="btn-finalizar-venda" disabled>Finalizar venda</button>
+        </div>
+      </div>
+
+      <!-- vendas de hoje -->
+      <div class="card">
+        <div class="card-head">
+          <h2>Vendas de hoje</h2>
+          <div class="resumo-hoje" id="resumo-hoje"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl" id="tbl-vendas-hoje">
+            <thead>
+              <tr><th>Hora</th><th>Itens</th><th>Qtd.</th><th>Pagamento</th><th class="num">Total</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="fechar-caixa-wrap">
+        <button class="btn btn-outline" id="btn-fechar-caixa">Fechar caixa do dia</button>
+      </div>
+    </section>
+
+    <!-- ---------- ESTOQUE ---------- -->
+    <section id="tab-estoque" class="tab-panel">
+      <div class="card">
+        <div class="card-head">
+          <h2>Estoque</h2>
+          <div class="card-head-actions">
+            <button class="btn btn-secondary btn-sm" id="btn-add-reposicao">+ Reposição</button>
+            <button class="btn btn-secondary btn-sm" id="btn-add-perda">+ Perda / doação</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl" id="tbl-estoque">
+            <thead>
+              <tr>
+                <th>Produto</th><th>Cor</th>
+                <th class="num">Estoque inicial</th>
+                <th class="num">Reposição</th>
+                <th class="num">Vendido</th>
+                <th class="num">Perdas/doações</th>
+                <th class="num">Saldo</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Movimentações</h2></div>
+        <div class="table-wrap">
+          <table class="tbl" id="tbl-movimentacoes">
+            <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th class="num">Qtd.</th><th>Observação</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- PRODUTOS ---------- -->
+    <section id="tab-produtos" class="tab-panel">
+      <div class="card">
+        <div class="card-head">
+          <h2>Produtos</h2>
+          <div class="card-head-actions">
+            <label class="btn btn-secondary btn-sm file-btn">
+              Importar planilha
+              <input type="file" id="input-importar" accept=".csv,.xlsx,.xls" hidden>
+            </label>
+            <button class="btn btn-primary btn-sm" id="btn-novo-produto">+ Novo produto</button>
+          </div>
+        </div>
+        <p class="hint">A planilha deve ter as colunas: <code>nome</code>, <code>cor</code>, <code>valor_custo</code>, <code>valor_venda</code>, <code>estoque_inicial</code>.</p>
+        <div class="table-wrap">
+          <table class="tbl" id="tbl-produtos">
+            <thead>
+              <tr><th>Nome</th><th>Cor</th><th class="num">Custo</th><th class="num">Venda</th><th class="num">Estoque inicial</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- RELATÓRIOS ---------- -->
+    <section id="tab-relatorios" class="tab-panel">
+      <div class="card">
+        <div class="card-head">
+          <h2>Relatório de vendas</h2>
+          <div class="rel-filtros">
+            <select id="rel-modo">
+              <option value="dia">Por dia</option>
+              <option value="mes">Por mês</option>
+            </select>
+            <input type="date" id="rel-data">
+            <input type="month" id="rel-mes" hidden>
+          </div>
+        </div>
+
+        <div class="metrics-row" id="rel-metrics"></div>
+
+        <div class="rel-cols">
+          <div>
+            <h3>Por forma de pagamento</h3>
+            <table class="tbl" id="tbl-rel-pagamentos">
+              <thead><tr><th>Forma</th><th class="num">Qtd.</th><th class="num">Valor</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div>
+            <h3>Produtos vendidos</h3>
+            <table class="tbl" id="tbl-rel-produtos">
+              <thead><tr><th>Produto</th><th class="num">Qtd.</th><th class="num">Valor</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <h3>Vendas no período</h3>
+        <div class="table-wrap">
+          <table class="tbl" id="tbl-rel-vendas">
+            <thead><tr><th>Data</th><th>Hora</th><th>Itens</th><th>Pagamento</th><th class="num">Total</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- FECHAMENTOS ---------- -->
+    <section id="tab-fechamentos" class="tab-panel">
+      <div class="card">
+        <div class="card-head"><h2>Histórico de fechamentos de caixa</h2></div>
+        <div class="table-wrap">
+          <table class="tbl" id="tbl-fechamentos">
+            <thead>
+              <tr>
+                <th>Data</th><th class="num">Abertura</th><th class="num">Vendas dinheiro</th>
+                <th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferença</th><th>Justificativa</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===================== MODAIS ===================== -->
+<div id="modal-overlay" class="modal-overlay" hidden>
+  <div class="modal" id="modal-box"></div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
