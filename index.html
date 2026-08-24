@@ -191,6 +191,41 @@
   .close-x{ float:right; background:none; border:none; font-size:18px; color:#5a5140; }
 
   select#pay-filter, select.filter-select{ background:var(--ink-2); color:var(--text-on-ink); border:1px solid var(--paper-dim); border-radius:6px; padding:8px 10px; }
+
+  /* ---------- cards de produto ---------- */
+  #product-search{
+    background:var(--ink); color:var(--text-on-ink); border:1px solid var(--paper-dim); border-radius:6px;
+    padding:8px 12px; font-size:13.5px; max-width:220px; width:100%;
+  }
+  #product-search:focus{ outline:2px solid var(--brass); outline-offset:1px; }
+  .product-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(148px,1fr)); gap:10px; }
+  .product-card{
+    border:1px solid rgba(239,230,210,.14); border-radius:8px; padding:12px; background:var(--ink);
+    text-align:left; cursor:pointer; transition:border-color .15s ease, transform .1s ease;
+  }
+  .product-card:hover:not(.disabled){ border-color:var(--brass); transform:translateY(-1px); }
+  .product-card:active:not(.disabled){ transform:translateY(0); }
+  .product-card .pname{ font-weight:600; font-size:13.5px; margin-bottom:5px; line-height:1.25; }
+  .product-card .pmeta{ display:flex; justify-content:space-between; gap:6px; font-size:10.5px; color:var(--text-dim); margin-bottom:8px; }
+  .product-card .pprice{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--brass); font-size:14px; }
+  .product-card.disabled{ opacity:.4; cursor:not-allowed; }
+  .product-card.disabled .pprice{ color:var(--text-dim); }
+  .product-empty{ grid-column:1/-1; }
+
+  /* ---------- linhas de pagamento (dividir pagamento) ---------- */
+  .payment-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .payment-row select{
+    flex:1.1; background:var(--ink); color:var(--text-on-ink); border:1px solid var(--paper-dim);
+    border-radius:6px; padding:9px 8px; font-size:13px;
+  }
+  .payment-row input{
+    flex:1; width:0; background:var(--ink); color:var(--text-on-ink); border:1px solid var(--paper-dim);
+    border-radius:6px; padding:9px 10px; font-size:13px; font-family:'IBM Plex Mono', monospace;
+  }
+  .payment-row .remove-pay{ background:none; border:none; color:#e08279; font-size:16px; padding:0 2px; flex:0 0 auto; }
+  .payment-row .remove-pay:disabled{ opacity:.25; cursor:not-allowed; }
+  #pay-remaining.ok{ color:var(--green-ok); }
+  #pay-remaining.pending{ color:#e08279; }
 </style>
 </head>
 <body>
@@ -262,51 +297,75 @@
 
     <!-- ---------- VENDA ---------- -->
     <section class="view" id="view-venda">
-      <div class="grid grid-2">
+      <div class="grid grid-2" style="align-items:start;">
         <div class="panel">
-          <h2>Adicionar produto</h2>
-          <div class="row-flex" style="margin-bottom:14px;">
-            <div class="field">
-              <label>Produto</label>
-              <select id="sale-product-select"></select>
-            </div>
-            <div class="field" style="max-width:90px;">
-              <label>Qtd.</label>
-              <input type="number" id="sale-qty" value="1" min="1">
-            </div>
-            <button class="btn btn-brass" id="btn-add-to-cart">Adicionar</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px; flex-wrap:wrap;">
+            <h2 style="margin:0;">Produtos</h2>
+            <input type="text" id="product-search" placeholder="Buscar produto...">
+          </div>
+          <div class="product-grid" id="product-grid"></div>
+        </div>
+
+        <div class="panel" style="position:sticky; top:78px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <h2 style="margin:0;">Venda atual</h2>
+            <button class="link-btn" id="btn-clear-cart">Limpar</button>
           </div>
           <div id="cart-list"><div class="empty-state"><div class="glyph">🧺</div>Carrinho vazio</div></div>
-        </div>
-        <div class="panel">
-          <h2>Fechar venda</h2>
-          <div style="font-family:'IBM Plex Mono'; font-size:28px; color:var(--brass); margin-bottom:16px;" id="cart-total">R$ 0,00</div>
-          <label style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim); display:block; margin-bottom:8px; font-weight:600;">Forma de pagamento</label>
-          <div class="paymethod-grid" id="pay-methods">
-            <button class="pay-btn" data-pay="Pix">Pix</button>
-            <button class="pay-btn" data-pay="Dinheiro">Dinheiro</button>
-            <button class="pay-btn" data-pay="Débito">Débito</button>
-            <button class="pay-btn" data-pay="Crédito">Crédito</button>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin:14px 0;">
+            <span style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim);">Total</span>
+            <span style="font-family:'IBM Plex Mono'; font-size:28px; color:var(--brass); font-weight:600;" id="cart-total">R$ 0,00</span>
           </div>
-          <div class="field" style="margin-top:14px;">
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <label style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim); font-weight:600;">Forma de pagamento</label>
+            <button class="link-btn" id="btn-add-payment">+ adicionar</button>
+          </div>
+          <div id="payment-rows"></div>
+          <div id="cash-change-box" style="display:none;">
+            <div class="row-flex">
+              <div class="field"><label>Valor recebido em dinheiro</label><input type="text" inputmode="decimal" id="cash-received" placeholder="0,00"></div>
+              <div class="field"><label>Troco</label><input type="text" id="cash-change" readonly value="R$ 0,00"></div>
+            </div>
+          </div>
+          <div id="pay-remaining" style="margin:12px 0 4px; font-size:13px; font-weight:600;"></div>
+
+          <div class="field" style="margin-top:10px;">
             <label>Observação (opcional)</label>
             <input id="sale-note" type="text" placeholder="Ex: cliente Maria">
           </div>
-          <button class="btn btn-stamp btn-block" id="btn-finish-sale" style="margin-top:8px;">Finalizar venda</button>
+          <button class="btn btn-stamp btn-block" id="btn-finish-sale" style="margin-top:12px;">Finalizar venda</button>
           <div id="receipt-holder"></div>
         </div>
       </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <h2 style="margin:0;">Vendas de hoje <span class="count" id="today-sales-count"></span></h2>
+          <div class="mono" style="font-size:13px; color:var(--text-dim);" id="today-sales-total"></div>
+        </div>
+        <table style="margin-top:12px;">
+          <thead><tr><th>Hora</th><th>Itens</th><th>Qtd.</th><th>Pagamento</th><th>Total</th><th></th></tr></thead>
+          <tbody id="today-sales-table"></tbody>
+        </table>
+      </div>
     </section>
+
 
     <!-- ---------- ESTOQUE ---------- -->
     <section class="view" id="view-estoque">
       <div class="panel">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:10px;">
           <h2 style="margin:0;">Produtos <span class="count" id="prod-count"></span></h2>
-          <button class="btn btn-brass btn-sm" id="btn-new-product">+ Novo produto</button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-ghost btn-sm" id="btn-import-csv">Importar CSV</button>
+            <input type="file" id="csv-file-input" accept=".csv" style="display:none;">
+            <button class="btn btn-brass btn-sm" id="btn-new-product">+ Novo produto</button>
+          </div>
         </div>
+        <div id="csv-import-status" style="font-size:12.5px; color:var(--text-dim); margin-bottom:12px;"></div>
         <table>
-          <thead><tr><th>Produto</th><th>Categoria</th><th>Custo</th><th>Venda</th><th>Estoque</th><th>Mín.</th><th></th></tr></thead>
+          <thead><tr><th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th><th>Estoque</th><th>Mín.</th><th></th></tr></thead>
           <tbody id="products-table"></tbody>
         </table>
       </div>
@@ -397,7 +456,7 @@
     <h3>Novo produto</h3>
     <div class="field"><label>Nome</label><input id="np-name" type="text"></div>
     <div class="row-flex">
-      <div class="field"><label>Categoria</label><input id="np-category" type="text"></div>
+      <div class="field"><label>Cor / Variante</label><input id="np-category" type="text" placeholder="Ex: Azul, Preta, Único"></div>
       <div class="field"><label>Estoque mínimo</label><input id="np-min" type="number" value="0" min="0"></div>
     </div>
     <div class="row-flex">
@@ -417,14 +476,20 @@
     <div id="sale-modal-items" style="margin-bottom:14px; font-size:13.5px;"></div>
     <div style="font-family:'IBM Plex Mono'; font-size:22px; color:var(--brass-dim); margin-bottom:16px;" id="sale-modal-total"></div>
     <div id="sale-modal-active">
-      <label style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:#5a5140; display:block; margin-bottom:8px; font-weight:600;">Forma de pagamento</label>
-      <div class="paymethod-grid" id="sale-modal-pay">
-        <button class="pay-btn" data-pay="Pix">Pix</button>
-        <button class="pay-btn" data-pay="Dinheiro">Dinheiro</button>
-        <button class="pay-btn" data-pay="Débito">Débito</button>
-        <button class="pay-btn" data-pay="Crédito">Crédito</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <label style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:#5a5140; font-weight:600;">Forma de pagamento</label>
+        <button class="link-btn" id="btn-modal-add-payment">+ adicionar</button>
       </div>
-      <div id="sale-modal-status" style="margin:12px 0 4px; font-size:12.5px; color:#5a5140; min-height:16px;"></div>
+      <div id="sale-modal-payment-rows"></div>
+      <div id="sale-modal-cash-box" style="display:none;">
+        <div class="row-flex">
+          <div class="field"><label>Valor recebido em dinheiro</label><input type="text" inputmode="decimal" id="sale-modal-cash-received" placeholder="0,00"></div>
+          <div class="field"><label>Troco</label><input type="text" id="sale-modal-cash-change" readonly value="R$ 0,00"></div>
+        </div>
+      </div>
+      <div id="sale-modal-remaining" style="margin:10px 0 4px; font-size:13px; font-weight:600;"></div>
+      <div id="sale-modal-status" style="margin:6px 0 4px; font-size:12.5px; color:#5a5140; min-height:16px;"></div>
+      <button class="btn btn-brass btn-block" id="btn-save-payment">Salvar forma de pagamento</button>
       <button class="btn btn-stamp btn-block" id="btn-cancel-sale" style="margin-top:10px;">Cancelar esta venda (estorna estoque)</button>
     </div>
     <div id="sale-modal-cancelled-msg" style="display:none; font-size:13px; color:var(--stamp); font-weight:600; margin-top:6px;"></div>
@@ -471,10 +536,10 @@ function emailParaUsuario(email){
 /* ---------------------------- estado local ---------------------------- */
 let currentUser = null;
 let products = [];      // {id,name,category,costPrice,salePrice,stock,minStock}
-let sales = [];         // {id,date,items,total,paymentMethod,seller,note}
+let sales = [];         // {id,date,items,total,payments:[{method,amount}],cashReceived,changeGiven,seller,note}
 let movements = [];     // {id,date,productId,productName,type,qty,reason,user}
-let cart = [];          // {productId,name,unitPrice,qty}
-let selectedPay = null;
+let cart = [];           // {productId,name,category,unitPrice,qty}
+let paymentRows = [{method:'Pix', amount:0}]; // linhas de pagamento da venda atual (permite dividir)
 let unsubProducts=null, unsubSales=null, unsubMov=null;
 
 /* ------------------------------ helpers -------------------------------- */
@@ -504,6 +569,15 @@ function showToast(msg){
 }
 function payTagClass(p){
   return {Pix:'tag-pix', Dinheiro:'tag-dinheiro', Débito:'tag-debito', Crédito:'tag-credito'}[p] || '';
+}
+/* Compatível com vendas antigas (campo único paymentMethod) e novas (array payments). */
+function salePayments(sale){
+  if(Array.isArray(sale.payments) && sale.payments.length) return sale.payments;
+  if(sale.paymentMethod) return [{method: sale.paymentMethod, amount: sale.total}];
+  return [];
+}
+function paymentsTagsHtml(sale){
+  return salePayments(sale).map(p=>`<span class="tag ${payTagClass(p.method)}" style="margin:1px 4px 1px 0; display:inline-block;">${p.method} ${fmtBRL(p.amount)}</span>`).join('');
 }
 function parseBRLInput(str){
   if(!str) return 0;
@@ -572,13 +646,15 @@ function attachListeners(){
   unsubProducts = db.collection('products').orderBy('name').onSnapshot(snap=>{
     products = snap.docs.map(d=>({id:d.id, ...d.data()}));
     renderProducts();
-    fillProductSelects();
+    fillMovProductSelect();
+    renderProductGrid();
     renderDashboard();
   });
   unsubSales = db.collection('sales').orderBy('date','desc').limit(500).onSnapshot(snap=>{
     sales = snap.docs.map(d=>({id:d.id, ...d.data()}));
     renderDashboard();
     renderRecentSales();
+    renderTodaySales();
   });
   unsubMov = db.collection('movements').orderBy('date','desc').limit(500).onSnapshot(snap=>{
     movements = snap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -635,30 +711,129 @@ async function deleteProduct(id){
   showToast('Produto excluído.');
 }
 
-function fillProductSelects(){
-  const opts = products.map(p=>`<option value="${p.id}">${p.name} (${p.stock} em estoque)</option>`).join('');
-  const s1 = document.getElementById('sale-product-select');
+function fillMovProductSelect(){
+  const opts = products.map(p=>`<option value="${p.id}">${p.name}${p.category?' - '+p.category:''} (${p.stock} em estoque)</option>`).join('');
   const s2 = document.getElementById('mov-product-select');
-  const keep1 = s1.value, keep2 = s2.value;
-  s1.innerHTML = opts || `<option value="">Cadastre um produto primeiro</option>`;
+  const keep2 = s2.value;
   s2.innerHTML = opts || `<option value="">Cadastre um produto primeiro</option>`;
-  if(keep1) s1.value = keep1;
   if(keep2) s2.value = keep2;
 }
 
+/* --------------------------- importar CSV de produtos ----------------------- */
+document.getElementById('btn-import-csv').addEventListener('click', ()=>document.getElementById('csv-file-input').click());
+document.getElementById('csv-file-input').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  const statusEl = document.getElementById('csv-import-status');
+  statusEl.textContent = 'Lendo arquivo...';
+  try{
+    const text = await file.text();
+    const rows = parseCsv(text);
+    if(rows.length===0){ statusEl.textContent = 'Arquivo vazio ou em formato inválido.'; return; }
+    const header = rows[0].map(h=>h.trim().toLowerCase());
+    const idx = {
+      nome: header.indexOf('nome'),
+      cor: header.indexOf('cor'),
+      custo: header.indexOf('valor_custo'),
+      venda: header.indexOf('valor_venda'),
+      estoque: header.indexOf('estoque_inicial')
+    };
+    if(idx.nome===-1){ statusEl.textContent = 'O CSV precisa ter uma coluna "nome".'; return; }
+
+    let criados=0, atualizados=0, ignorados=0;
+    const batch = db.batch();
+    let opsInBatch = 0;
+    const batches = [batch];
+
+    for(let i=1;i<rows.length;i++){
+      const row = rows[i];
+      if(!row || row.every(c=>!c || !c.trim())) continue;
+      const nome = (row[idx.nome]||'').trim();
+      if(!nome){ ignorados++; continue; }
+      const cor = idx.cor>-1 ? (row[idx.cor]||'').trim() : '';
+      const custo = idx.custo>-1 ? parseBRLInput(row[idx.custo]) : 0;
+      const venda = idx.venda>-1 ? parseBRLInput(row[idx.venda]) : 0;
+      const estoqueTxt = idx.estoque>-1 ? (row[idx.estoque]||'').trim() : '';
+      const estoque = estoqueTxt ? (parseInt(estoqueTxt)||0) : 0;
+
+      const existing = products.find(p=>p.name.toLowerCase()===nome.toLowerCase() && (p.category||'').toLowerCase()===cor.toLowerCase());
+      let curBatch = batches[batches.length-1];
+      if(opsInBatch>=450){ curBatch = db.batch(); batches.push(curBatch); opsInBatch=0; }
+
+      if(existing){
+        curBatch.update(db.collection('products').doc(existing.id), {
+          costPrice: custo, salePrice: venda, stock: estoque
+        });
+        atualizados++;
+      } else {
+        curBatch.set(db.collection('products').doc(), {
+          name: nome, category: cor, costPrice: custo, salePrice: venda,
+          stock: estoque, minStock: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        criados++;
+      }
+      opsInBatch++;
+    }
+
+    for(const b of batches){ await b.commit(); }
+    statusEl.textContent = `Importação concluída: ${criados} produto(s) criado(s), ${atualizados} atualizado(s)${ignorados?`, ${ignorados} linha(s) ignorada(s)`:''}.`;
+    showToast('CSV importado com sucesso.');
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = 'Erro ao importar o CSV. Confira o formato do arquivo.';
+  }
+});
+
+/* Parser simples de CSV com ; ou , como separador, sem suporte a campos com aspas/vírgulas internas. */
+function parseCsv(text){
+  const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim().length>0);
+  if(lines.length===0) return [];
+  const sep = lines[0].includes(';') ? ';' : ',';
+  return lines.map(l=>l.split(sep));
+}
+
 /* -------------------------------- venda ----------------------------------- */
-document.getElementById('btn-add-to-cart').addEventListener('click', ()=>{
-  const sel = document.getElementById('sale-product-select');
-  const pid = sel.value;
-  const qty = parseInt(document.getElementById('sale-qty').value)||1;
-  if(!pid){ showToast('Cadastre e selecione um produto.'); return; }
+const PAY_METHODS = ['Pix','Dinheiro','Débito','Crédito'];
+let productSearchTerm = '';
+
+function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
+function cartTotal(){ return cart.reduce((s,c)=>s + c.unitPrice*c.qty, 0); }
+
+document.getElementById('product-search').addEventListener('input', e=>{
+  productSearchTerm = e.target.value;
+  renderProductGrid();
+});
+
+function renderProductGrid(){
+  const grid = document.getElementById('product-grid');
+  const term = productSearchTerm.trim().toLowerCase();
+  let list = products.filter(p=> !term || p.name.toLowerCase().includes(term) || (p.category||'').toLowerCase().includes(term));
+  list = [...list].sort((a,b)=> a.name.localeCompare(b.name,'pt-BR') || (a.category||'').localeCompare(b.category||'','pt-BR'));
+  if(list.length===0){
+    grid.innerHTML = `<div class="empty-state product-empty"><div class="glyph">📦</div>${products.length===0 ? 'Nenhum produto cadastrado ainda' : 'Nenhum produto encontrado'}</div></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(p=>{
+    const out = p.stock<=0;
+    return `
+    <button type="button" class="product-card ${out?'disabled':''}" ${out?'disabled':''} onclick="addProductToCart('${p.id}')">
+      <div class="pname">${p.name}</div>
+      <div class="pmeta"><span>${p.category||'—'}</span><span>${out?'esgotado':'saldo '+p.stock}</span></div>
+      <div class="pprice">${fmtBRL(p.salePrice)}</div>
+    </button>`;
+  }).join('');
+}
+
+function addProductToCart(pid){
   const p = products.find(x=>x.id===pid);
   if(!p) return;
-  if(qty > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
   const existing = cart.find(c=>c.productId===pid);
-  if(existing){ existing.qty += qty; } else { cart.push({productId:pid, name:p.name, unitPrice:p.salePrice, qty}); }
+  const currentQty = existing ? existing.qty : 0;
+  if(currentQty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
+  if(existing){ existing.qty += 1; } else { cart.push({productId:pid, name:p.name, category:p.category||'', unitPrice:p.salePrice, qty:1}); }
   renderCart();
-});
+}
 
 function renderCart(){
   const el = document.getElementById('cart-list');
@@ -667,42 +842,112 @@ function renderCart(){
   } else {
     el.innerHTML = cart.map((c,i)=>`
       <div class="cart-item">
-        <div class="name">${c.name} <span class="mono" style="color:var(--text-dim);">× ${fmtBRL(c.unitPrice)}</span></div>
+        <div class="name">${c.name}<br><span class="mono" style="color:var(--text-dim); font-size:11.5px;">${c.category?c.category+' · ':''}${fmtBRL(c.unitPrice)} un.</span></div>
         <div class="qty-ctl">
           <button onclick="changeCartQty(${i},-1)">−</button>
           <span class="mono">${c.qty}</span>
           <button onclick="changeCartQty(${i},1)">+</button>
+          <span class="mono" style="margin-left:8px; min-width:66px; text-align:right; display:inline-block;">${fmtBRL(c.unitPrice*c.qty)}</span>
           <button onclick="removeCartItem(${i})" style="margin-left:6px;color:#e08279;">✕</button>
         </div>
       </div>`).join('');
   }
-  const total = cart.reduce((s,c)=>s+c.unitPrice*c.qty,0);
-  document.getElementById('cart-total').textContent = fmtBRL(total);
+  document.getElementById('cart-total').textContent = fmtBRL(cartTotal());
+  if(paymentRows.length===1){ paymentRows[0].amount = round2(cartTotal()); }
+  renderPaymentRows();
 }
 function changeCartQty(i, delta){
-  cart[i].qty += delta;
-  if(cart[i].qty<=0) cart.splice(i,1);
+  const c = cart[i];
+  const p = products.find(x=>x.id===c.productId);
+  if(delta>0 && p && c.qty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
+  c.qty += delta;
+  if(c.qty<=0) cart.splice(i,1);
   renderCart();
 }
 function removeCartItem(i){ cart.splice(i,1); renderCart(); }
-
-document.querySelectorAll('.pay-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.pay-btn').forEach(b=>b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedPay = btn.dataset.pay;
-  });
+document.getElementById('btn-clear-cart').addEventListener('click', ()=>{
+  cart = [];
+  paymentRows = [{method:'Pix', amount:0}];
+  document.getElementById('sale-note').value = '';
+  const cashEl = document.getElementById('cash-received'); if(cashEl) cashEl.value='';
+  document.getElementById('receipt-holder').innerHTML = '';
+  renderCart();
 });
+
+/* -------- pagamento dividido (várias formas na mesma venda) -------- */
+function renderPaymentRows(){
+  const box = document.getElementById('payment-rows');
+  box.innerHTML = paymentRows.map((r,i)=>`
+    <div class="payment-row">
+      <select onchange="setPaymentMethod(${i}, this.value)">
+        ${PAY_METHODS.map(m=>`<option value="${m}" ${m===r.method?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <input type="text" inputmode="decimal" value="${r.amount ? String(r.amount).replace('.',',') : ''}" placeholder="0,00" onchange="setPaymentAmount(${i}, this.value)">
+      <button class="remove-pay" ${paymentRows.length<=1?'disabled':''} onclick="removePaymentRow(${i})">✕</button>
+    </div>`).join('');
+
+  const hasCash = paymentRows.some(r=>r.method==='Dinheiro');
+  document.getElementById('cash-change-box').style.display = hasCash ? 'block' : 'none';
+  if(hasCash){
+    const cashRow = paymentRows.find(r=>r.method==='Dinheiro');
+    const received = parseBRLInput(document.getElementById('cash-received').value);
+    const troco = round2(received - (cashRow.amount||0));
+    document.getElementById('cash-change').value = fmtBRL(Math.max(troco,0));
+  }
+
+  const allocated = round2(paymentRows.reduce((s,r)=>s+(r.amount||0),0));
+  const remaining = round2(cartTotal() - allocated);
+  const remEl = document.getElementById('pay-remaining');
+  if(cartTotal()===0){
+    remEl.textContent = ''; remEl.className='';
+  } else if(Math.abs(remaining) < 0.01){
+    remEl.textContent = 'Pagamento completo.'; remEl.className = 'ok';
+  } else if(remaining > 0){
+    remEl.textContent = `Falta alocar: ${fmtBRL(remaining)}`; remEl.className = 'pending';
+  } else {
+    remEl.textContent = `Valor alocado a mais: ${fmtBRL(Math.abs(remaining))}`; remEl.className = 'pending';
+  }
+}
+function setPaymentMethod(i, value){ paymentRows[i].method = value; renderPaymentRows(); }
+function setPaymentAmount(i, value){ paymentRows[i].amount = round2(parseBRLInput(value)); renderPaymentRows(); }
+function removePaymentRow(i){
+  if(paymentRows.length<=1) return;
+  paymentRows.splice(i,1);
+  if(paymentRows.length===1){ paymentRows[0].amount = round2(cartTotal()); }
+  renderPaymentRows();
+}
+document.getElementById('btn-add-payment').addEventListener('click', ()=>{
+  const allocated = round2(paymentRows.reduce((s,r)=>s+(r.amount||0),0));
+  const remaining = Math.max(round2(cartTotal() - allocated), 0);
+  const used = paymentRows.map(r=>r.method);
+  const next = PAY_METHODS.find(m=>!used.includes(m)) || 'Dinheiro';
+  paymentRows.push({method: next, amount: remaining});
+  renderPaymentRows();
+});
+document.getElementById('cash-received').addEventListener('input', renderPaymentRows);
 
 document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
   if(cart.length===0){ showToast('Adicione ao menos um produto.'); return; }
-  if(!selectedPay){ showToast('Selecione a forma de pagamento.'); return; }
-  const total = cart.reduce((s,c)=>s+c.unitPrice*c.qty,0);
+  const total = round2(cartTotal());
+  const allocated = round2(paymentRows.reduce((s,r)=>s+(r.amount||0),0));
+  if(Math.abs(total-allocated) >= 0.01){ showToast('A soma das formas de pagamento precisa fechar com o total da venda.'); return; }
+  const paymentsClean = paymentRows.filter(r=>r.amount>0).map(r=>({method:r.method, amount:round2(r.amount)}));
+  if(paymentsClean.length===0){ showToast('Informe ao menos uma forma de pagamento.'); return; }
+
+  const cashRow = paymentsClean.find(r=>r.method==='Dinheiro');
+  let cashReceived = null, changeGiven = null;
+  if(cashRow){
+    cashReceived = round2(parseBRLInput(document.getElementById('cash-received').value)) || cashRow.amount;
+    if(cashReceived < cashRow.amount){ showToast('O valor recebido em dinheiro é menor que o valor alocado em dinheiro.'); return; }
+    changeGiven = round2(cashReceived - cashRow.amount);
+  }
+
   const saleData = {
     date: firebase.firestore.FieldValue.serverTimestamp(),
-    items: cart.map(c=>({productId:c.productId, name:c.name, qty:c.qty, unitPrice:c.unitPrice, subtotal:c.unitPrice*c.qty})),
+    items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:round2(c.unitPrice*c.qty)})),
     total,
-    paymentMethod: selectedPay,
+    payments: paymentsClean,
+    cashReceived, changeGiven,
     seller: emailParaUsuario(currentUser.email),
     note: document.getElementById('sale-note').value.trim()
   };
@@ -717,9 +962,10 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     });
     await batch.commit();
     showReceipt(saleData);
-    cart = []; selectedPay = null;
-    document.querySelectorAll('.pay-btn').forEach(b=>b.classList.remove('selected'));
+    cart = [];
+    paymentRows = [{method:'Pix', amount:0}];
     document.getElementById('sale-note').value='';
+    document.getElementById('cash-received').value='';
     renderCart();
     showToast('Venda registrada.');
   } catch(err){
@@ -737,9 +983,40 @@ function showReceipt(sale){
       ${sale.items.map(i=>`<div class="rline"><span>${i.qty}× ${i.name}</span><span>${fmtBRL(i.subtotal)}</span></div>`).join('')}
       <hr>
       <div class="rline total"><span>TOTAL</span><span>${fmtBRL(sale.total)}</span></div>
-      <div class="rline"><span>Pagamento</span><span>${sale.paymentMethod}</span></div>
+      ${sale.payments.map(p=>`<div class="rline"><span>${p.method}</span><span>${fmtBRL(p.amount)}</span></div>`).join('')}
+      ${sale.changeGiven ? `<div class="rline"><span>Troco</span><span>${fmtBRL(sale.changeGiven)}</span></div>` : ''}
       <div class="rline"><span>Vendedor</span><span>${sale.seller}</span></div>
     </div>`;
+}
+
+/* ---------------------------- vendas de hoje (na tela de venda) ------------- */
+function renderTodaySales(){
+  const todays = sales.filter(s=>isToday(s.date));
+  const ativas = todays.filter(s=>!s.cancelled);
+  const totalQty = ativas.reduce((s,x)=>s + x.items.reduce((si,i)=>si+i.qty,0), 0);
+  document.getElementById('today-sales-count').textContent = `(${ativas.length} venda${ativas.length===1?'':'s'})`;
+  document.getElementById('today-sales-total').textContent = ativas.length
+    ? `${totalQty} produto${totalQty===1?'':'s'} · Total ${fmtBRL(ativas.reduce((s,x)=>s+x.total,0))}`
+    : '';
+
+  const tbody = document.getElementById('today-sales-table');
+  if(todays.length===0){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="glyph">🧾</div>Nenhuma venda registrada hoje</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = todays.map(s=>{
+    const hora = (s.date && s.date.toDate) ? s.date.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    const qty = s.items.reduce((si,i)=>si+i.qty,0);
+    return `
+    <tr class="${s.cancelled?'row-cancelled':''}">
+      <td class="mono">${hora}</td>
+      <td>${s.items.map(i=>i.qty+'× '+i.name).join(', ')}</td>
+      <td class="mono">${qty}</td>
+      <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : paymentsTagsHtml(s)}</td>
+      <td class="mono">${fmtBRL(s.total)}</td>
+      <td><button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button></td>
+    </tr>`;
+  }).join('');
 }
 
 /* --------------------------- movimentações ------------------------------- */
@@ -789,6 +1066,7 @@ function renderMovements(){
 
 /* -------------------------- detalhes / editar venda ------------------------- */
 let currentSaleModalId = null;
+let modalPaymentRows = [];
 
 function openSaleModal(saleId){
   const s = sales.find(x=>x.id===saleId);
@@ -810,31 +1088,102 @@ function openSaleModal(saleId){
   } else {
     activeBox.style.display = 'block';
     cancelledMsg.style.display = 'none';
-    document.querySelectorAll('#sale-modal-pay .pay-btn').forEach(b=>{
-      b.classList.toggle('selected', b.dataset.pay === s.paymentMethod);
-    });
+    modalPaymentRows = salePayments(s).map(p=>({method:p.method, amount:p.amount}));
+    if(modalPaymentRows.length===0) modalPaymentRows = [{method:'Pix', amount:s.total}];
+    const cashEl = document.getElementById('sale-modal-cash-received');
+    cashEl.value = s.cashReceived ? String(s.cashReceived).replace('.',',') : '';
+    renderModalPaymentRows(s.total);
   }
   openModal('modal-sale');
 }
 
-document.querySelectorAll('#sale-modal-pay .pay-btn').forEach(btn=>{
-  btn.addEventListener('click', async ()=>{
-    if(!currentSaleModalId) return;
-    const novaForma = btn.dataset.pay;
-    try{
-      await db.collection('sales').doc(currentSaleModalId).update({
-        paymentMethod: novaForma,
-        paymentEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        paymentEditedBy: emailParaUsuario(currentUser.email)
-      });
-      document.querySelectorAll('#sale-modal-pay .pay-btn').forEach(b=>b.classList.toggle('selected', b===btn));
-      document.getElementById('sale-modal-status').textContent = `Forma de pagamento atualizada para ${novaForma}.`;
-      showToast('Forma de pagamento atualizada.');
-    }catch(err){
-      console.error(err);
-      showToast('Erro ao atualizar a forma de pagamento.');
-    }
-  });
+function renderModalPaymentRows(saleTotal){
+  const box = document.getElementById('sale-modal-payment-rows');
+  box.innerHTML = modalPaymentRows.map((r,i)=>`
+    <div class="payment-row">
+      <select onchange="setModalPaymentMethod(${i}, this.value)">
+        ${PAY_METHODS.map(m=>`<option value="${m}" ${m===r.method?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <input type="text" inputmode="decimal" value="${r.amount ? String(r.amount).replace('.',',') : ''}" placeholder="0,00" onchange="setModalPaymentAmount(${i}, this.value, ${saleTotal})">
+      <button class="remove-pay" ${modalPaymentRows.length<=1?'disabled':''} onclick="removeModalPaymentRow(${i}, ${saleTotal})">✕</button>
+    </div>`).join('');
+
+  const hasCash = modalPaymentRows.some(r=>r.method==='Dinheiro');
+  document.getElementById('sale-modal-cash-box').style.display = hasCash ? 'block' : 'none';
+  if(hasCash){
+    const cashRow = modalPaymentRows.find(r=>r.method==='Dinheiro');
+    const received = parseBRLInput(document.getElementById('sale-modal-cash-received').value);
+    document.getElementById('sale-modal-cash-change').value = fmtBRL(Math.max(round2(received - (cashRow.amount||0)),0));
+  }
+
+  const allocated = round2(modalPaymentRows.reduce((s,r)=>s+(r.amount||0),0));
+  const remaining = round2(saleTotal - allocated);
+  const remEl = document.getElementById('sale-modal-remaining');
+  if(Math.abs(remaining) < 0.01){
+    remEl.textContent = 'Pagamento fecha com o total.'; remEl.className='ok';
+  } else if(remaining > 0){
+    remEl.textContent = `Falta alocar: ${fmtBRL(remaining)}`; remEl.className='pending';
+  } else {
+    remEl.textContent = `Valor alocado a mais: ${fmtBRL(Math.abs(remaining))}`; remEl.className='pending';
+  }
+}
+function setModalPaymentMethod(i, value){
+  modalPaymentRows[i].method = value;
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  renderModalPaymentRows(s ? s.total : 0);
+}
+function setModalPaymentAmount(i, value, saleTotal){ modalPaymentRows[i].amount = round2(parseBRLInput(value)); renderModalPaymentRows(saleTotal); }
+function removeModalPaymentRow(i, saleTotal){
+  if(modalPaymentRows.length<=1) return;
+  modalPaymentRows.splice(i,1);
+  renderModalPaymentRows(saleTotal);
+}
+document.getElementById('btn-modal-add-payment').addEventListener('click', ()=>{
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(!s) return;
+  const allocated = round2(modalPaymentRows.reduce((sum,r)=>sum+(r.amount||0),0));
+  const remaining = Math.max(round2(s.total - allocated), 0);
+  const used = modalPaymentRows.map(r=>r.method);
+  const next = PAY_METHODS.find(m=>!used.includes(m)) || 'Dinheiro';
+  modalPaymentRows.push({method: next, amount: remaining});
+  renderModalPaymentRows(s.total);
+});
+document.getElementById('sale-modal-cash-received').addEventListener('input', ()=>{
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(s) renderModalPaymentRows(s.total);
+});
+
+document.getElementById('btn-save-payment').addEventListener('click', async ()=>{
+  if(!currentSaleModalId) return;
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(!s) return;
+  const allocated = round2(modalPaymentRows.reduce((sum,r)=>sum+(r.amount||0),0));
+  if(Math.abs(s.total - allocated) >= 0.01){ showToast('A soma das formas de pagamento precisa fechar com o total da venda.'); return; }
+  const paymentsClean = modalPaymentRows.filter(r=>r.amount>0).map(r=>({method:r.method, amount:round2(r.amount)}));
+  if(paymentsClean.length===0){ showToast('Informe ao menos uma forma de pagamento.'); return; }
+
+  const cashRow = paymentsClean.find(r=>r.method==='Dinheiro');
+  let cashReceived = null, changeGiven = null;
+  if(cashRow){
+    cashReceived = round2(parseBRLInput(document.getElementById('sale-modal-cash-received').value)) || cashRow.amount;
+    if(cashReceived < cashRow.amount){ showToast('O valor recebido em dinheiro é menor que o valor alocado em dinheiro.'); return; }
+    changeGiven = round2(cashReceived - cashRow.amount);
+  }
+
+  try{
+    await db.collection('sales').doc(currentSaleModalId).update({
+      payments: paymentsClean,
+      paymentMethod: firebase.firestore.FieldValue.delete(),
+      cashReceived, changeGiven,
+      paymentEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      paymentEditedBy: emailParaUsuario(currentUser.email)
+    });
+    document.getElementById('sale-modal-status').textContent = 'Forma de pagamento atualizada.';
+    showToast('Forma de pagamento atualizada.');
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao atualizar a forma de pagamento.');
+  }
 });
 
 document.getElementById('btn-cancel-sale').addEventListener('click', async ()=>{
@@ -878,10 +1227,9 @@ function renderDashboard(){
   document.getElementById('stat-low-count').textContent = low.length;
 
   const byPay = {};
-  todaySales.forEach(s=>{ byPay[s.paymentMethod] = (byPay[s.paymentMethod]||0) + s.total; });
+  todaySales.forEach(s=> salePayments(s).forEach(p=>{ byPay[p.method] = (byPay[p.method]||0) + p.amount; }));
   const payEl = document.getElementById('dash-paymethods');
-  const methods = ['Pix','Dinheiro','Débito','Crédito'];
-  payEl.innerHTML = methods.map(m=>`
+  payEl.innerHTML = PAY_METHODS.map(m=>`
     <div class="cart-item"><span class="tag ${payTagClass(m)}">${m}</span><span class="mono">${fmtBRL(byPay[m]||0)}</span></div>
   `).join('');
 
@@ -903,7 +1251,7 @@ function renderRecentSales(){
       <tr class="${s.cancelled?'row-cancelled':''}">
         <td class="mono">${fmtDate(s.date)}</td>
         <td>${s.items.map(i=>i.qty+'× '+i.name).join(', ')}</td>
-        <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : `<span class="tag ${payTagClass(s.paymentMethod)}">${s.paymentMethod}</span>`}</td>
+        <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : paymentsTagsHtml(s)}</td>
         <td>${s.seller}</td>
         <td class="mono">${fmtBRL(s.total)}</td>
         <td><button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button></td>
@@ -974,7 +1322,7 @@ async function runReport(){
     if(to) query = query.where('date','<=', new Date(to+'T23:59:59'));
     const snap = await query.get();
     let filtered = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(payFilter) filtered = filtered.filter(s=>s.paymentMethod === payFilter);
+    if(payFilter) filtered = filtered.filter(s=> salePayments(s).some(p=>p.method===payFilter));
     filtered.sort((a,b)=> (b.date?.toMillis?.()||0) - (a.date?.toMillis?.()||0));
 
     const revenue = filtered.filter(s=>!s.cancelled).reduce((s,x)=>s+x.total,0);
@@ -994,7 +1342,7 @@ async function runReport(){
         <tr class="${s.cancelled?'row-cancelled':''}">
           <td class="mono">${fmtDate(s.date)}</td>
           <td>${s.items.map(i=>i.qty+'× '+i.name).join(', ')}</td>
-          <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : `<span class="tag ${payTagClass(s.paymentMethod)}">${s.paymentMethod}</span>`}</td>
+          <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : paymentsTagsHtml(s)}</td>
           <td>${s.seller}</td>
           <td class="mono">${fmtBRL(s.total)}</td>
           <td><button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button></td>
