@@ -19,6 +19,7 @@ export function initAuth(onLogin, onLogout) {
     try {
       await signInWithEmailAndPassword(auth, email, senha);
     } catch (err) {
+      console.error("Erro de login Firebase:", err.code, err.message, err);
       erroEl.textContent = traduzErro(err.code);
       erroEl.hidden = false;
     } finally {
@@ -53,7 +54,9 @@ function traduzErro(code) {
     "auth/user-not-found": "E-mail ou senha incorretos.",
     "auth/wrong-password": "E-mail ou senha incorretos.",
     "auth/too-many-requests": "Muitas tentativas. Aguarde um instante e tente novamente.",
-    "auth/network-request-failed": "Falha de conexão. Verifique a internet."
+    "auth/network-request-failed": "Falha de conexão. Verifique a internet.",
+    "auth/requests-from-referer-are-blocked": "A chave do Firebase está bloqueando este site. Verifique as restrições da API key no Google Cloud Console.",
+    "auth/api-key-not-valid": "A chave do Firebase (API key) está incorreta ou incompleta em firebase-config.js."
   };
-  return mapa[code] || "Não foi possível entrar. Tente novamente.";
+  return mapa[code] || `Não foi possível entrar (código: ${code || "desconhecido"}). Veja o console (F12) para detalhes.`;
 }
