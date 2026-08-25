@@ -250,8 +250,8 @@
   </div>
   <div class="ledger-card">
     <div class="field">
-      <label>Usuário</label>
-      <input id="login-email" type="text" placeholder="admin" autocomplete="username" value="admin">
+      <label>Usuário ou e-mail</label>
+      <input id="login-email" type="text" placeholder="kbomfa@gmail.com" autocomplete="username">
     </div>
     <div class="field">
       <label>Senha</label>
@@ -549,12 +549,16 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 /* O Firebase exige um e-mail para autenticação. Para permitir um login simples
-   por "usuário", cada nome de usuário é convertido em um e-mail interno com
-   este domínio fixo (o usuário nunca vê isso). Ex: usuário "admin" vira
-   admin@centenario.local — é esse e-mail que você cadastra no Firebase Authentication. */
+   por "usuário", cada nome digitado sem "@" é convertido num e-mail interno com
+   este domínio fixo. Ex: usuário "admin" vira admin@centenario.local. Se a
+   pessoa digitar um e-mail de verdade (com @), ele é usado direto, sem conversão —
+   assim dá pra cadastrar tanto usuários simples (admin) quanto e-mails reais
+   (ex: kbomfa@gmail.com) no Firebase Authentication. */
 const LOGIN_DOMAIN = 'centenario.local';
 function usuarioParaEmail(usuario){
-  return usuario.trim().toLowerCase().replace(/\s+/g,'') + '@' + LOGIN_DOMAIN;
+  const val = usuario.trim().toLowerCase().replace(/\s+/g,'');
+  if(val.includes('@')) return val;
+  return val + '@' + LOGIN_DOMAIN;
 }
 function emailParaUsuario(email){
   return (email||'').split('@')[0];
