@@ -113,9 +113,10 @@
 
   .grid{ display:grid; gap:16px; }
   .grid-4{ grid-template-columns:repeat(4,1fr); }
+  .grid-5{ grid-template-columns:repeat(5,1fr); }
   .grid-2{ grid-template-columns:repeat(2,1fr); }
-  @media(max-width:820px){ .grid-4{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;} }
-  @media(max-width:560px){ .grid-4{grid-template-columns:1fr;} }
+  @media(max-width:820px){ .grid-4{grid-template-columns:repeat(2,1fr);} .grid-5{grid-template-columns:repeat(3,1fr);} .grid-2{grid-template-columns:1fr;} }
+  @media(max-width:560px){ .grid-4{grid-template-columns:1fr;} .grid-5{grid-template-columns:1fr;} }
 
   .stat-card{
     background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);
@@ -142,7 +143,11 @@
   .tag-credito{ background:#6b402b; color:#f2d9c9; }
   .tag-entrada{ background:#2b6b57; color:#c9f2e4; }
   .tag-saida{ background:#6b2b2b; color:#f2c9c9; }
+  .tag-venda{ background:#2b4f6b; color:#c9e6f2; }
+  .tag-cancelamento{ background:#5a2323; color:#f2c9c9; }
+  .tag-baixa-presale{ background:#6b5b2b; color:#f2e6c9; }
   .low-stock{ color:var(--stamp); font-weight:600; }
+  .presale-qty{ color:var(--brass-dim); font-weight:600; }
 
   .row-flex{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
   .row-flex .field{ margin-bottom:0; flex:1; min-width:140px; }
@@ -286,11 +291,12 @@
     <!-- ---------- DASHBOARD ---------- -->
     <section class="view active" id="view-dashboard">
       <h2 style="margin-bottom:18px;">Painel de hoje</h2>
-      <div class="grid grid-4" style="margin-bottom:22px;">
+      <div class="grid grid-5" style="margin-bottom:22px;">
         <div class="stat-card"><div class="label">Vendas hoje</div><div class="value brass mono" id="stat-today-total">R$ 0,00</div></div>
         <div class="stat-card"><div class="label">Nº de vendas</div><div class="value mono" id="stat-today-count">0</div></div>
         <div class="stat-card"><div class="label">Vendas no mês</div><div class="value mono" id="stat-month-total">R$ 0,00</div></div>
         <div class="stat-card"><div class="label">Itens em falta</div><div class="value stamp mono" id="stat-low-count">0</div></div>
+        <div class="stat-card"><div class="label">Itens em pré-venda</div><div class="value mono presale-qty" id="stat-presale-count">0</div></div>
       </div>
       <div class="grid grid-2">
         <div class="panel">
@@ -374,7 +380,7 @@
         </div>
         <div id="csv-import-status" style="font-size:12.5px; color:var(--text-dim); margin-bottom:12px;"></div>
         <table>
-          <thead><tr><th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th><th>Estoque</th><th>Mín.</th><th></th></tr></thead>
+          <thead><tr><th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th><th>Estoque</th><th>Pré-venda</th><th>Mín.</th><th></th></tr></thead>
           <tbody id="products-table"></tbody>
         </table>
       </div>
@@ -389,11 +395,13 @@
             <label>Produto</label>
             <select id="mov-product-select"></select>
           </div>
-          <div class="field" style="max-width:110px;">
+          <div class="field" style="max-width:170px;">
             <label>Tipo</label>
             <select id="mov-type">
               <option value="entrada">Entrada</option>
-              <option value="saida">Saída</option>
+              <option value="saida_perda">Baixa por perda</option>
+              <option value="saida_doacao">Baixa por doação</option>
+              <option value="saida_ajuste">Saída (ajuste manual)</option>
             </select>
           </div>
           <div class="field" style="max-width:90px;">
@@ -401,8 +409,8 @@
             <input type="number" id="mov-qty" value="1" min="1">
           </div>
           <div class="field">
-            <label>Motivo</label>
-            <input type="text" id="mov-reason" placeholder="Ex: compra fornecedor, perda, ajuste">
+            <label>Motivo (opcional)</label>
+            <input type="text" id="mov-reason" placeholder="Detalhe adicional, ex: nome do fornecedor">
           </div>
           <button class="btn btn-brass" id="btn-add-mov">Registrar</button>
         </div>
@@ -423,9 +431,11 @@
           <h2 style="margin:0;">Pré-vendas <span class="count" id="presales-count"></span></h2>
         </div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;">
-          Vendas de produtos sem estoque no momento, a serem produzidos/entregues depois.
+          Vendas de produtos sem estoque no momento, a serem produzidos/entregues depois. Enquanto pendente,
+          o item fica na coluna <strong>Pré-venda</strong> do Estoque (sem afetar o saldo físico).
           Quando o produto estiver pronto, registre a entrada normalmente em
-          <strong>Movimentações</strong> e marque a pré-venda como entregue aqui.
+          <strong>Movimentações</strong> e depois marque a pré-venda como entregue aqui — isso remove o item
+          da coluna Pré-venda e baixa automaticamente o estoque.
         </div>
         <table>
           <thead><tr><th>Data</th><th>Itens em pré-venda</th><th>Vendedor</th><th>Total</th><th>Status</th><th></th></tr></thead>
@@ -566,7 +576,7 @@ function emailParaUsuario(email){
 
 /* ---------------------------- estado local ---------------------------- */
 let currentUser = null;
-let products = [];      // {id,name,category,costPrice,salePrice,stock,minStock}
+let products = [];      // {id,name,category,costPrice,salePrice,stock,minStock,presaleQty}
 let sales = [];         // {id,date,items,total,payments:[{method,amount}],cashReceived,changeGiven,seller,note}
 let movements = [];     // {id,date,productId,productName,type,qty,reason,user}
 let cart = [];           // {productId,name,category,unitPrice,qty}
@@ -699,19 +709,23 @@ function renderProducts(){
   const tbody = document.getElementById('products-table');
   document.getElementById('prod-count').textContent = `(${products.length})`;
   if(products.length===0){
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="glyph">📦</div>Nenhum produto cadastrado ainda</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="glyph">📦</div>Nenhum produto cadastrado ainda</div></td></tr>`;
     return;
   }
-  tbody.innerHTML = products.map(p=>`
+  tbody.innerHTML = products.map(p=>{
+    const pre = p.presaleQty||0;
+    return `
     <tr>
       <td>${p.name}</td>
       <td>${p.category||'—'}</td>
       <td class="mono">${fmtBRL(p.costPrice)}</td>
       <td class="mono">${fmtBRL(p.salePrice)}</td>
       <td class="mono ${p.stock<=p.minStock ? 'low-stock':''}">${p.stock}</td>
+      <td class="mono ${pre>0?'presale-qty':''}">${pre>0?pre:'—'}</td>
       <td class="mono">${p.minStock}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="deleteProduct('${p.id}')">Excluir</button></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 document.getElementById('btn-new-product').addEventListener('click', ()=>openModal('modal-product'));
@@ -744,7 +758,7 @@ async function deleteProduct(id){
 }
 
 function fillMovProductSelect(){
-  const opts = products.map(p=>`<option value="${p.id}">${p.name}${p.category?' - '+p.category:''} (${p.stock} em estoque)</option>`).join('');
+  const opts = products.map(p=>`<option value="${p.id}">${p.name}${p.category?' - '+p.category:''} (${p.stock} em estoque${p.presaleQty?', '+p.presaleQty+' em pré-venda':''})</option>`).join('');
   const s2 = document.getElementById('mov-product-select');
   const keep2 = s2.value;
   s2.innerHTML = opts || `<option value="">Cadastre um produto primeiro</option>`;
@@ -1018,11 +1032,26 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     const batch = db.batch();
     const saleRef = db.collection('sales').doc();
     batch.set(saleRef, saleData);
+    const seller = emailParaUsuario(currentUser.email);
     cart.forEach(c=>{
-      if(c.presale) return; // pré-venda: produto ainda não existe em estoque, nada a descontar
       const p = products.find(x=>x.id===c.productId);
       const ref = db.collection('products').doc(c.productId);
-      batch.update(ref, {stock: (p.stock - c.qty)});
+      if(c.presale){
+        // pré-venda: não desconta do estoque físico, apenas entra na coluna "pré-venda"
+        batch.update(ref, {presaleQty: (p.presaleQty||0) + c.qty});
+        batch.set(db.collection('movements').doc(), {
+          date: firebase.firestore.FieldValue.serverTimestamp(),
+          productId: c.productId, productName: c.name, type:'saida', category:'presale', label:'Pré-venda',
+          qty: c.qty, reason:'Venda registrada como pré-venda', user: seller, saleId: saleRef.id
+        });
+      } else {
+        batch.update(ref, {stock: (p.stock - c.qty)});
+        batch.set(db.collection('movements').doc(), {
+          date: firebase.firestore.FieldValue.serverTimestamp(),
+          productId: c.productId, productName: c.name, type:'saida', category:'venda', label:'Venda',
+          qty: c.qty, reason:'Venda', user: seller, saleId: saleRef.id
+        });
+      }
     });
     await batch.commit();
     showReceipt(saleData);
@@ -1120,14 +1149,32 @@ function renderPresales(){
 }
 
 async function markPresaleFulfilled(saleId){
-  if(!confirm('Marcar esta pré-venda como produzida/entregue? Lembre-se de registrar a entrada do produto no estoque em Movimentações, se ainda não fez.')) return;
+  const s = sales.find(x=>x.id===saleId);
+  if(!s) return;
+  const presaleItems = s.items.filter(i=>i.presale);
+  if(!confirm('Marcar esta pré-venda como entregue? O(s) item(ns) sairá(ão) da coluna "Pré-venda" e o estoque será baixado. Registre a entrada do produto em Movimentações antes de confirmar, se ainda não fez.')) return;
   try{
-    await db.collection('sales').doc(saleId).update({
+    const batch = db.batch();
+    const user = emailParaUsuario(currentUser.email);
+    presaleItems.forEach(it=>{
+      const p = products.find(pp=>pp.id===it.productId);
+      const ref = db.collection('products').doc(it.productId);
+      const novoPresale = Math.max((p ? (p.presaleQty||0) : 0) - it.qty, 0);
+      const novoEstoque = Math.max((p ? p.stock : 0) - it.qty, 0);
+      batch.update(ref, {presaleQty: novoPresale, stock: novoEstoque});
+      batch.set(db.collection('movements').doc(), {
+        date: firebase.firestore.FieldValue.serverTimestamp(),
+        productId: it.productId, productName: it.name, type:'saida', category:'baixa_presale', label:'Baixa por pré-venda',
+        qty: it.qty, reason:'Entrega de pré-venda', user, saleId
+      });
+    });
+    batch.update(db.collection('sales').doc(saleId), {
       presaleStatus: 'entregue',
       presaleFulfilledAt: firebase.firestore.FieldValue.serverTimestamp(),
-      presaleFulfilledBy: emailParaUsuario(currentUser.email)
+      presaleFulfilledBy: user
     });
-    showToast('Pré-venda marcada como entregue.');
+    await batch.commit();
+    showToast('Pré-venda marcada como entregue. Estoque baixado.');
   }catch(err){
     console.error(err);
     showToast('Erro ao atualizar a pré-venda.');
@@ -1135,21 +1182,33 @@ async function markPresaleFulfilled(saleId){
 }
 
 /* --------------------------- movimentações ------------------------------- */
+/* Mapeia a opção escolhida no select para o tipo base (entrada/saída) que afeta o estoque
+   e para um motivo padrão exibido no histórico. */
+const MOV_TYPE_MAP = {
+  entrada:      { base:'entrada', label:'Entrada',           defaultReason:'' },
+  saida_perda:  { base:'saida',   label:'Baixa por perda',   defaultReason:'Perda' },
+  saida_doacao: { base:'saida',   label:'Baixa por doação',  defaultReason:'Doação' },
+  saida_ajuste: { base:'saida',   label:'Saída (ajuste)',    defaultReason:'Ajuste manual' }
+};
+
 document.getElementById('btn-add-mov').addEventListener('click', async ()=>{
   const pid = document.getElementById('mov-product-select').value;
-  const type = document.getElementById('mov-type').value;
+  const movOption = document.getElementById('mov-type').value;
   const qty = parseInt(document.getElementById('mov-qty').value)||0;
-  const reason = document.getElementById('mov-reason').value.trim();
+  const reasonNote = document.getElementById('mov-reason').value.trim();
   if(!pid){ showToast('Selecione um produto.'); return; }
   if(qty<=0){ showToast('Informe uma quantidade válida.'); return; }
+  const mapping = MOV_TYPE_MAP[movOption];
   const p = products.find(x=>x.id===pid);
-  if(type==='saida' && qty > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
-  const delta = type==='entrada' ? qty : -qty;
+  if(mapping.base==='saida' && qty > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
+  const delta = mapping.base==='entrada' ? qty : -qty;
+  const reason = reasonNote ? (mapping.defaultReason ? `${mapping.defaultReason} — ${reasonNote}` : reasonNote) : mapping.defaultReason;
   try{
     const batch = db.batch();
     batch.set(db.collection('movements').doc(), {
       date: firebase.firestore.FieldValue.serverTimestamp(),
-      productId: pid, productName: p.name, type, qty, reason, user: emailParaUsuario(currentUser.email)
+      productId: pid, productName: p.name, type: mapping.base, category: movOption, label: mapping.label,
+      qty, reason, user: emailParaUsuario(currentUser.email)
     });
     batch.update(db.collection('products').doc(pid), {stock: p.stock + delta});
     await batch.commit();
@@ -1162,6 +1221,22 @@ document.getElementById('btn-add-mov').addEventListener('click', async ()=>{
   }
 });
 
+/* Rótulo/tag exibido no histórico para cada categoria de movimentação que afeta o estoque. */
+const MOV_CATEGORY_LABELS = {
+  entrada: {label:'Entrada', cls:'tag-entrada'},
+  saida_perda: {label:'Baixa por perda', cls:'tag-saida'},
+  saida_doacao: {label:'Baixa por doação', cls:'tag-saida'},
+  saida_ajuste: {label:'Saída (ajuste)', cls:'tag-saida'},
+  venda: {label:'Venda', cls:'tag-venda'},
+  cancelamento: {label:'Cancelamento', cls:'tag-cancelamento'},
+  presale: {label:'Pré-venda', cls:'tag-presale'},
+  baixa_presale: {label:'Baixa por pré-venda', cls:'tag-baixa-presale'}
+};
+function movTagHtml(m){
+  const info = MOV_CATEGORY_LABELS[m.category] || (m.type==='entrada' ? {label:'Entrada', cls:'tag-entrada'} : {label:'Saída', cls:'tag-saida'});
+  return `<span class="tag ${info.cls}">${info.label}</span>`;
+}
+
 function renderMovements(){
   const tbody = document.getElementById('movements-table');
   if(movements.length===0){
@@ -1172,7 +1247,7 @@ function renderMovements(){
     <tr>
       <td class="mono">${fmtDate(m.date)}</td>
       <td>${m.productName}</td>
-      <td><span class="tag ${m.type==='entrada'?'tag-entrada':'tag-saida'}">${m.type==='entrada'?'Entrada':'Saída'}</span></td>
+      <td>${movTagHtml(m)}</td>
       <td class="mono">${m.qty}</td>
       <td>${m.reason||'—'}</td>
       <td>${m.user}</td>
@@ -1320,24 +1395,37 @@ document.getElementById('btn-cancel-sale').addEventListener('click', async ()=>{
   if(!currentSaleModalId) return;
   const s = sales.find(x=>x.id===currentSaleModalId);
   if(!s || s.cancelled) return;
-  if(!confirm(`Cancelar esta venda de ${fmtBRL(s.total)}? O estoque dos itens (exceto pré-vendas) será devolvido automaticamente.`)) return;
+  const jaEntregue = s.presaleStatus==='entregue';
+  if(!confirm(`Cancelar esta venda de ${fmtBRL(s.total)}? O estoque será estornado (itens de pré-venda ainda pendente saem da coluna "Pré-venda"; itens já entregues devolvem ao estoque).`)) return;
   try{
     const batch = db.batch();
+    const user = emailParaUsuario(currentUser.email);
     s.items.forEach(it=>{
-      if(it.presale) return; // pré-venda nunca teve estoque descontado
       const p = products.find(pp=>pp.id===it.productId);
       const ref = db.collection('products').doc(it.productId);
-      const novoEstoque = (p ? p.stock : 0) + it.qty;
-      batch.update(ref, {stock: novoEstoque});
+      if(it.presale && !jaEntregue){
+        // pré-venda ainda pendente: nunca descontou estoque, apenas remove da coluna "pré-venda"
+        const novoPresale = Math.max((p ? (p.presaleQty||0) : 0) - it.qty, 0);
+        batch.update(ref, {presaleQty: novoPresale});
+      } else {
+        // venda normal, ou pré-venda já entregue (estoque já havia sido baixado): devolve ao estoque
+        const novoEstoque = (p ? p.stock : 0) + it.qty;
+        batch.update(ref, {stock: novoEstoque});
+      }
+      batch.set(db.collection('movements').doc(), {
+        date: firebase.firestore.FieldValue.serverTimestamp(),
+        productId: it.productId, productName: it.name, type:'entrada', category:'cancelamento', label:'Cancelamento',
+        qty: it.qty, reason:'Estorno por cancelamento de venda', user, saleId: currentSaleModalId
+      });
     });
     batch.update(db.collection('sales').doc(currentSaleModalId), {
       cancelled: true,
       cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-      cancelledBy: emailParaUsuario(currentUser.email)
+      cancelledBy: user
     });
     await batch.commit();
     closeModal('modal-sale');
-    showToast('Venda cancelada e estoque devolvido.');
+    showToast('Venda cancelada e estoque estornado.');
   }catch(err){
     console.error(err);
     showToast('Erro ao cancelar a venda.');
@@ -1356,6 +1444,9 @@ function renderDashboard(){
 
   const low = products.filter(p=>p.stock<=p.minStock);
   document.getElementById('stat-low-count').textContent = low.length;
+
+  const totalPresale = products.reduce((s,p)=> s + (p.presaleQty||0), 0);
+  document.getElementById('stat-presale-count').textContent = totalPresale;
 
   const byPay = {};
   todaySales.forEach(s=> salePayments(s).forEach(p=>{ byPay[p.method] = (byPay[p.method]||0) + p.amount; }));
