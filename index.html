@@ -1159,16 +1159,21 @@ async function markPresaleFulfilled(saleId){
   try{
     const batch = db.batch();
     const user = emailParaUsuario(currentUser.email);
+    let produtoFaltando = false;
     presaleItems.forEach(it=>{
       const p = products.find(pp=>pp.id===it.productId);
       const ref = db.collection('products').doc(it.productId);
-      const novoPresale = Math.max((p ? (p.presaleQty||0) : 0) - it.qty, 0);
-      const novoEstoque = Math.max((p ? p.stock : 0) - it.qty, 0);
-      batch.update(ref, {presaleQty: novoPresale, stock: novoEstoque});
+      if(!p){
+        produtoFaltando = true;
+      } else {
+        const novoPresale = Math.max((p.presaleQty||0) - it.qty, 0);
+        const novoEstoque = Math.max(p.stock - it.qty, 0);
+        batch.update(ref, {presaleQty: novoPresale, stock: novoEstoque});
+      }
       batch.set(db.collection('movements').doc(), {
         date: firebase.firestore.FieldValue.serverTimestamp(),
         productId: it.productId, productName: it.name, type:'saida', category:'baixa_presale', label:'Baixa por pré-venda',
-        qty: it.qty, reason:'Entrega de pré-venda', user, saleId
+        qty: it.qty, reason: p ? 'Entrega de pré-venda' : 'Entrega de pré-venda (produto excluído do catálogo, estoque não pôde ser ajustado)', user, saleId
       });
     });
     batch.update(db.collection('sales').doc(saleId), {
@@ -1177,7 +1182,7 @@ async function markPresaleFulfilled(saleId){
       presaleFulfilledBy: user
     });
     await batch.commit();
-    showToast('Pré-venda marcada como entregue. Estoque baixado.');
+    showToast(produtoFaltando ? 'Pré-venda marcada como entregue. Obs: produto já excluído do catálogo, estoque não pôde ser ajustado.' : 'Pré-venda marcada como entregue. Estoque baixado.');
   }catch(err){
     console.error(err);
     showToast('Erro ao atualizar a pré-venda.');
@@ -1416,22 +1421,28 @@ document.getElementById('btn-cancel-sale').addEventListener('click', async ()=>{
   try{
     const batch = db.batch();
     const user = emailParaUsuario(currentUser.email);
+    let produtoFaltando = false;
     s.items.forEach(it=>{
       const p = products.find(pp=>pp.id===it.productId);
       const ref = db.collection('products').doc(it.productId);
-      if(it.presale && !jaEntregue){
+      if(!p){
+        // Produto foi excluído do catálogo depois da venda: não tem como devolver
+        // estoque/pré-venda pra ele. Pula essa atualização (senão o batch inteiro falha),
+        // mas ainda registra a movimentação para efeito de auditoria.
+        produtoFaltando = true;
+      } else if(it.presale && !jaEntregue){
         // pré-venda ainda pendente: nunca descontou estoque, apenas remove da coluna "pré-venda"
-        const novoPresale = Math.max((p ? (p.presaleQty||0) : 0) - it.qty, 0);
+        const novoPresale = Math.max((p.presaleQty||0) - it.qty, 0);
         batch.update(ref, {presaleQty: novoPresale});
       } else {
         // venda normal, ou pré-venda já entregue (estoque já havia sido baixado): devolve ao estoque
-        const novoEstoque = (p ? p.stock : 0) + it.qty;
+        const novoEstoque = p.stock + it.qty;
         batch.update(ref, {stock: novoEstoque});
       }
       batch.set(db.collection('movements').doc(), {
         date: firebase.firestore.FieldValue.serverTimestamp(),
         productId: it.productId, productName: it.name, type:'entrada', category:'cancelamento', label:'Cancelamento',
-        qty: it.qty, reason:'Estorno por cancelamento de venda', user, saleId: currentSaleModalId
+        qty: it.qty, reason: p ? 'Estorno por cancelamento de venda' : 'Estorno por cancelamento de venda (produto excluído do catálogo, estoque não pôde ser ajustado)', user, saleId: currentSaleModalId
       });
     });
     batch.update(db.collection('sales').doc(currentSaleModalId), {
@@ -1441,7 +1452,7 @@ document.getElementById('btn-cancel-sale').addEventListener('click', async ()=>{
     });
     await batch.commit();
     closeModal('modal-sale');
-    showToast('Venda cancelada e estoque estornado.');
+    showToast(produtoFaltando ? 'Venda cancelada. Obs: 1 ou mais produtos da venda já foram excluídos do catálogo, então o estoque deles não pôde ser ajustado.' : 'Venda cancelada e estoque estornado.');
   }catch(err){
     console.error(err);
     showToast('Erro ao cancelar a venda.');
