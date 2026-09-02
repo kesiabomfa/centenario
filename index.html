@@ -336,6 +336,16 @@
             <span style="font-family:'IBM Plex Mono'; font-size:28px; color:var(--brass); font-weight:600;" id="cart-total">R$ 0,00</span>
           </div>
 
+          <div id="presale-contact-box" style="display:none; margin:0 0 16px; padding:12px 14px; border:1px dashed var(--brass-dim); border-radius:8px; background:var(--panel-alt);">
+            <div style="font-size:12px; color:var(--ink-2); margin-bottom:10px; line-height:1.4;">
+              Esta venda tem item(ns) em <strong>pré-venda</strong>. Informe o nome e telefone do cliente para avisá-lo quando o produto chegar:
+            </div>
+            <div class="row-flex">
+              <div class="field"><label>Nome do cliente</label><input type="text" id="presale-customer-name" placeholder="Nome completo"></div>
+              <div class="field"><label>Telefone</label><input type="text" id="presale-customer-phone" placeholder="(00) 00000-0000"></div>
+            </div>
+          </div>
+
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <label style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim); font-weight:600;">Forma de pagamento</label>
             <button class="link-btn" id="btn-add-payment">+ adicionar</button>
@@ -438,7 +448,7 @@
           da coluna Pré-venda e baixa automaticamente o estoque.
         </div>
         <table>
-          <thead><tr><th>Data</th><th>Itens em pré-venda</th><th>Vendedor</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Itens em pré-venda</th><th>Cliente</th><th>Telefone</th><th>Vendedor</th><th>Total</th><th>Status</th><th></th></tr></thead>
           <tbody id="presales-table"></tbody>
         </table>
       </div>
@@ -512,6 +522,14 @@
     <h3>Detalhes da venda</h3>
     <div id="sale-modal-items" style="margin-bottom:14px; font-size:13.5px;"></div>
     <div style="font-family:'IBM Plex Mono'; font-size:22px; color:var(--brass-dim); margin-bottom:16px;" id="sale-modal-total"></div>
+    <div id="sale-modal-contact-box" style="display:none; margin:0 0 16px; padding:12px 14px; border:1px dashed var(--brass-dim); border-radius:8px; background:var(--panel-alt);">
+      <div style="font-size:12px; color:var(--ink-2); margin-bottom:10px; line-height:1.4;">Contato do cliente (pré-venda):</div>
+      <div class="row-flex">
+        <div class="field"><label>Nome do cliente</label><input type="text" id="sale-modal-customer-name" placeholder="Nome completo"></div>
+        <div class="field"><label>Telefone</label><input type="text" id="sale-modal-customer-phone" placeholder="(00) 00000-0000"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btn-save-contact" style="margin-top:10px;">Salvar contato</button>
+    </div>
     <div id="sale-modal-active">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
         <label style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:#5a5140; font-weight:600;">Forma de pagamento</label>
@@ -530,6 +548,7 @@
       <button class="btn btn-stamp btn-block" id="btn-cancel-sale" style="margin-top:10px;">Cancelar esta venda (estorna estoque)</button>
     </div>
     <div id="sale-modal-cancelled-msg" style="display:none; font-size:13px; color:var(--stamp); font-weight:600; margin-top:6px;"></div>
+    <button class="btn btn-ghost btn-block" id="btn-undo-cancel-sale" style="display:none; margin-top:12px;">Desfazer cancelamento</button>
   </div>
 </div>
 
@@ -903,6 +922,7 @@ function renderCart(){
       </div>`).join('');
   }
   document.getElementById('cart-total').textContent = fmtBRL(cartTotal());
+  document.getElementById('presale-contact-box').style.display = cart.some(c=>c.presale) ? 'block' : 'none';
   if(paymentRows.length===1){ paymentRows[0].amount = round2(cartTotal()); }
   renderPaymentRows();
 }
@@ -919,6 +939,8 @@ document.getElementById('btn-clear-cart').addEventListener('click', ()=>{
   cart = [];
   paymentRows = [{method:'Pix', amount:0}];
   const cashEl = document.getElementById('cash-received'); if(cashEl) cashEl.value='';
+  document.getElementById('presale-customer-name').value='';
+  document.getElementById('presale-customer-phone').value='';
   document.getElementById('receipt-holder').innerHTML = '';
   renderCart();
 });
@@ -1018,6 +1040,12 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
   }
 
   const hasPresale = cart.some(c=>c.presale);
+  let customerName = '', customerPhone = '';
+  if(hasPresale){
+    customerName = document.getElementById('presale-customer-name').value.trim();
+    customerPhone = document.getElementById('presale-customer-phone').value.trim();
+    if(!customerName || !customerPhone){ showToast('Informe nome e telefone do cliente para o item em pré-venda.'); return; }
+  }
   const saleData = {
     date: firebase.firestore.FieldValue.serverTimestamp(),
     items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:round2(c.unitPrice*c.qty), presale: !!c.presale})),
@@ -1026,7 +1054,9 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     cashReceived, changeGiven,
     seller: emailParaUsuario(currentUser.email),
     hasPresale,
-    presaleStatus: hasPresale ? 'pendente' : null
+    presaleStatus: hasPresale ? 'pendente' : null,
+    customerName: hasPresale ? customerName : null,
+    customerPhone: hasPresale ? customerPhone : null
   };
   try{
     const batch = db.batch();
@@ -1058,6 +1088,8 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     cart = [];
     paymentRows = [{method:'Pix', amount:0}];
     document.getElementById('cash-received').value='';
+    document.getElementById('presale-customer-name').value='';
+    document.getElementById('presale-customer-phone').value='';
     renderCart();
     showToast(hasPresale ? 'Venda registrada (com item em pré-venda).' : 'Venda registrada.');
   } catch(err){
@@ -1130,7 +1162,7 @@ function renderPresales(){
   document.getElementById('presales-count').textContent = `(${pending.length} pendente${pending.length===1?'':'s'})`;
 
   if(list.length===0){
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="glyph">🔧</div>Nenhuma pré-venda registrada</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="glyph">🔧</div>Nenhuma pré-venda registrada</div></td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(s=>{
@@ -1140,6 +1172,8 @@ function renderPresales(){
     <tr>
       <td class="mono">${fmtDate(s.date)}</td>
       <td>${itemsSummary(presaleItems)}</td>
+      <td>${s.customerName || '<span style="color:var(--text-dim);">—</span>'}</td>
+      <td class="mono">${s.customerPhone || '<span style="color:var(--text-dim);">—</span>'}</td>
       <td>${s.seller}</td>
       <td class="mono">${fmtBRL(s.total)}</td>
       <td>${done ? '<span class="tag" style="background:#2b6b57;color:#c9f2e4;">Entregue</span>' : '<span class="tag tag-presale">Pendente</span>'}</td>
@@ -1288,17 +1322,29 @@ async function openSaleModal(saleId){
   ).join('');
   document.getElementById('sale-modal-total').textContent = fmtBRL(s.total);
 
+  const contactBox = document.getElementById('sale-modal-contact-box');
+  if(s.hasPresale){
+    contactBox.style.display = 'block';
+    document.getElementById('sale-modal-customer-name').value = s.customerName || '';
+    document.getElementById('sale-modal-customer-phone').value = s.customerPhone || '';
+  } else {
+    contactBox.style.display = 'none';
+  }
+
   const activeBox = document.getElementById('sale-modal-active');
   const cancelledMsg = document.getElementById('sale-modal-cancelled-msg');
   document.getElementById('sale-modal-status').textContent = '';
 
+  const undoBtn = document.getElementById('btn-undo-cancel-sale');
   if(s.cancelled){
     activeBox.style.display = 'none';
     cancelledMsg.style.display = 'block';
     cancelledMsg.textContent = `Esta venda foi cancelada em ${fmtDate(s.cancelledAt)} por ${s.cancelledBy||'—'}. O estoque já foi devolvido.`;
+    undoBtn.style.display = 'block';
   } else {
     activeBox.style.display = 'block';
     cancelledMsg.style.display = 'none';
+    undoBtn.style.display = 'none';
     modalPaymentRows = salePayments(s).map(p=>({method:p.method, amount:p.amount, installments:p.installments||1}));
     if(modalPaymentRows.length===0) modalPaymentRows = [{method:'Pix', amount:s.total}];
     const cashEl = document.getElementById('sale-modal-cash-received');
@@ -1412,6 +1458,25 @@ document.getElementById('btn-save-payment').addEventListener('click', async ()=>
   }
 });
 
+document.getElementById('btn-save-contact').addEventListener('click', async ()=>{
+  if(!currentSaleModalId) return;
+  const name = document.getElementById('sale-modal-customer-name').value.trim();
+  const phone = document.getElementById('sale-modal-customer-phone').value.trim();
+  if(!name || !phone){ showToast('Informe nome e telefone do cliente.'); return; }
+  try{
+    await db.collection('sales').doc(currentSaleModalId).update({
+      customerName: name,
+      customerPhone: phone
+    });
+    const s = sales.find(x=>x.id===currentSaleModalId);
+    if(s){ s.customerName = name; s.customerPhone = phone; }
+    showToast('Contato do cliente atualizado.');
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao atualizar o contato do cliente.');
+  }
+});
+
 document.getElementById('btn-cancel-sale').addEventListener('click', async ()=>{
   if(!currentSaleModalId) return;
   const s = sales.find(x=>x.id===currentSaleModalId);
@@ -1456,6 +1521,52 @@ document.getElementById('btn-cancel-sale').addEventListener('click', async ()=>{
   }catch(err){
     console.error(err);
     showToast('Erro ao cancelar a venda.');
+  }
+});
+
+document.getElementById('btn-undo-cancel-sale').addEventListener('click', async ()=>{
+  if(!currentSaleModalId) return;
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(!s || !s.cancelled) return;
+  const jaEntregue = s.presaleStatus==='entregue';
+  if(!confirm(`Desfazer o cancelamento desta venda de ${fmtBRL(s.total)}? A venda voltará a ficar ativa e o estoque será ajustado de novo (itens de pré-venda ainda pendente voltam pra coluna "Pré-venda"; itens já entregues ou vendas normais saem do estoque novamente).`)) return;
+  try{
+    const batch = db.batch();
+    const user = emailParaUsuario(currentUser.email);
+    let produtoFaltando = false;
+    s.items.forEach(it=>{
+      const p = products.find(pp=>pp.id===it.productId);
+      const ref = db.collection('products').doc(it.productId);
+      if(!p){
+        // Produto foi excluído do catálogo: não tem como ajustar estoque/pré-venda pra ele.
+        produtoFaltando = true;
+      } else if(it.presale && !jaEntregue){
+        // pré-venda ainda pendente: volta pra coluna "pré-venda" (não mexe no estoque físico)
+        batch.update(ref, {presaleQty: (p.presaleQty||0) + it.qty});
+      } else {
+        // venda normal, ou pré-venda já entregue: desconta do estoque de novo
+        batch.update(ref, {stock: Math.max(p.stock - it.qty, 0)});
+      }
+      batch.set(db.collection('movements').doc(), {
+        date: firebase.firestore.FieldValue.serverTimestamp(),
+        productId: it.productId, productName: it.name, type:'saida', category: (it.presale && !jaEntregue) ? 'presale' : 'venda',
+        label: (it.presale && !jaEntregue) ? 'Pré-venda' : 'Venda',
+        qty: it.qty, reason: p ? 'Reativação por desfazer cancelamento' : 'Desfazer cancelamento (produto excluído do catálogo, estoque não pôde ser ajustado)', user, saleId: currentSaleModalId
+      });
+    });
+    batch.update(db.collection('sales').doc(currentSaleModalId), {
+      cancelled: false,
+      cancelledAt: firebase.firestore.FieldValue.delete(),
+      cancelledBy: firebase.firestore.FieldValue.delete(),
+      uncancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
+      uncancelledBy: user
+    });
+    await batch.commit();
+    closeModal('modal-sale');
+    showToast(produtoFaltando ? 'Cancelamento desfeito. Obs: 1 ou mais produtos já foram excluídos do catálogo, então o estoque deles não pôde ser ajustado.' : 'Cancelamento desfeito — venda reativada e estoque ajustado novamente.');
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao desfazer o cancelamento.');
   }
 });
 
