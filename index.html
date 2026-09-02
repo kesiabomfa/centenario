@@ -1143,7 +1143,10 @@ function renderPresales(){
       <td>${s.seller}</td>
       <td class="mono">${fmtBRL(s.total)}</td>
       <td>${done ? '<span class="tag" style="background:#2b6b57;color:#c9f2e4;">Entregue</span>' : '<span class="tag tag-presale">Pendente</span>'}</td>
-      <td>${done ? `<button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button>` : `<button class="link-btn" onclick="markPresaleFulfilled('${s.id}')">marcar como entregue</button>`}</td>
+      <td>${done
+        ? `<button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button>`
+        : `<button class="link-btn" onclick="markPresaleFulfilled('${s.id}')">marcar como entregue</button> · <button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes / cancelar</button>`
+      }</td>
     </tr>`;
   }).join('');
 }
@@ -1258,9 +1261,22 @@ function renderMovements(){
 let currentSaleModalId = null;
 let modalPaymentRows = [];
 
-function openSaleModal(saleId){
-  const s = sales.find(x=>x.id===saleId);
-  if(!s) return;
+async function openSaleModal(saleId){
+  let s = sales.find(x=>x.id===saleId);
+  if(!s){
+    // Não está no cache local (que só guarda as 500 vendas mais recentes) —
+    // busca direto no Firestore, já que o Relatórios pode listar vendas mais antigas.
+    try{
+      const doc = await db.collection('sales').doc(saleId).get();
+      if(doc.exists){
+        s = {id: doc.id, ...doc.data()};
+        sales.push(s); // deixa disponível para o handler de cancelar/pagamento também
+      }
+    }catch(err){
+      console.error(err);
+    }
+  }
+  if(!s){ showToast('Venda não encontrada.'); return; }
   currentSaleModalId = saleId;
   document.getElementById('sale-modal-items').innerHTML = s.items.map(i=>
     `<div class="rline" style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${i.qty}× ${i.name}${i.presale?' <span class="tag tag-presale" style="font-size:9px; padding:1px 6px;">pré-venda</span>':''}</span><span class="mono">${fmtBRL(i.subtotal)}</span></div>`
