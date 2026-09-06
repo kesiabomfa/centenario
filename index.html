@@ -383,6 +383,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:10px;">
           <h2 style="margin:0;">Produtos <span class="count" id="prod-count"></span></h2>
           <div style="display:flex; gap:8px;">
+            <button class="btn btn-ghost btn-sm" id="btn-recalc-sold" title="Recalcula o total vendido de cada produto com base em todo o histórico já registrado (rode uma vez após esta atualização)">Recalcular vendido</button>
             <button class="btn btn-ghost btn-sm" id="btn-import-csv">Importar CSV</button>
             <input type="file" id="csv-file-input" accept=".csv" style="display:none;">
             <button class="btn btn-brass btn-sm" id="btn-new-product">+ Novo produto</button>
@@ -390,7 +391,7 @@
         </div>
         <div id="csv-import-status" style="font-size:12.5px; color:var(--text-dim); margin-bottom:12px;"></div>
         <table>
-          <thead><tr><th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th><th>Estoque</th><th>Pré-venda</th><th>Mín.</th><th></th></tr></thead>
+          <thead><tr><th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th><th>Estoque</th><th>Pré-venda</th><th>Vendido</th><th></th></tr></thead>
           <tbody id="products-table"></tbody>
         </table>
       </div>
@@ -723,6 +724,50 @@ function attachListeners(){
   });
 }
 
+/* Recálculo único do total vendido, com base em TODO o histórico de vendas (sem limite de 500).
+   Roda sob demanda (botão), não em todo carregamento da tela — por isso não pesa no dia a dia. */
+document.getElementById('btn-recalc-sold').addEventListener('click', async ()=>{
+  if(!confirm('Isso vai recalcular a coluna "Vendido" de todos os produtos, somando todo o histórico de vendas já registrado (sem limite). Pode levar alguns segundos dependendo do tamanho do histórico. Continuar?')) return;
+  showToast('Recalculando a partir do histórico... aguarde.');
+  try{
+    const totals = {};
+    let lastDoc = null, lidos = 0;
+    while(true){
+      let q = db.collection('sales').orderBy('date').limit(400);
+      if(lastDoc) q = q.startAfter(lastDoc);
+      const snap = await q.get();
+      if(snap.empty) break;
+      snap.docs.forEach(doc=>{
+        const s = doc.data();
+        if(s.cancelled) return; // vendas canceladas não contam
+        (s.items||[]).forEach(it=>{
+          // conta itens vendidos normalmente, e itens de pré-venda só depois de entregues
+          if(!it.presale || s.presaleStatus==='entregue'){
+            totals[it.productId] = (totals[it.productId]||0) + it.qty;
+          }
+        });
+      });
+      lidos += snap.docs.length;
+      lastDoc = snap.docs[snap.docs.length-1];
+      if(snap.docs.length < 400) break;
+    }
+    const batches = [db.batch()];
+    let ops = 0;
+    function addUpdate(pid, valor){
+      let cur = batches[batches.length-1];
+      if(ops>=450){ cur = db.batch(); batches.push(cur); ops=0; }
+      cur.update(db.collection('products').doc(pid), {totalSold: valor});
+      ops++;
+    }
+    products.forEach(p=> addUpdate(p.id, totals[p.id]||0));
+    for(const b of batches){ await b.commit(); }
+    showToast(`Pronto! Recalculado com base em ${lidos} venda(s) do histórico.`);
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao recalcular o histórico.');
+  }
+});
+
 /* ------------------------------ produtos --------------------------------- */
 function renderProducts(){
   const tbody = document.getElementById('products-table');
@@ -741,7 +786,7 @@ function renderProducts(){
       <td class="mono">${fmtBRL(p.salePrice)}</td>
       <td class="mono ${p.stock<=p.minStock ? 'low-stock':''}">${p.stock}</td>
       <td class="mono ${pre>0?'presale-qty':''}">${pre>0?pre:'—'}</td>
-      <td class="mono">${p.minStock}</td>
+      <td class="mono">${p.totalSold||0}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="deleteProduct('${p.id}')">Excluir</button></td>
     </tr>`;
   }).join('');
@@ -762,6 +807,7 @@ document.getElementById('btn-save-product').addEventListener('click', async ()=>
     salePrice: parseBRLInput(document.getElementById('np-price').value),
     minStock: parseInt(document.getElementById('np-min').value)||0,
     stock: parseInt(document.getElementById('np-stock').value)||0,
+    totalSold: 0,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   await db.collection('products').add(data);
@@ -834,7 +880,7 @@ document.getElementById('csv-file-input').addEventListener('change', async (e)=>
       } else {
         curBatch.set(db.collection('products').doc(), {
           name: nome, category: cor, costPrice: custo, salePrice: venda,
-          stock: estoque, minStock: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          stock: estoque, minStock: 0, totalSold: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         criados++;
       }
@@ -1075,7 +1121,7 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
           qty: c.qty, reason:'Venda registrada como pré-venda', user: seller, saleId: saleRef.id
         });
       } else {
-        batch.update(ref, {stock: (p.stock - c.qty)});
+        batch.update(ref, {stock: (p.stock - c.qty), totalSold: firebase.firestore.FieldValue.increment(c.qty)});
         batch.set(db.collection('movements').doc(), {
           date: firebase.firestore.FieldValue.serverTimestamp(),
           productId: c.productId, productName: c.name, type:'saida', category:'venda', label:'Venda',
@@ -1202,7 +1248,7 @@ async function markPresaleFulfilled(saleId){
       } else {
         const novoPresale = Math.max((p.presaleQty||0) - it.qty, 0);
         const novoEstoque = Math.max(p.stock - it.qty, 0);
-        batch.update(ref, {presaleQty: novoPresale, stock: novoEstoque});
+        batch.update(ref, {presaleQty: novoPresale, stock: novoEstoque, totalSold: firebase.firestore.FieldValue.increment(it.qty)});
       }
       batch.set(db.collection('movements').doc(), {
         date: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1502,7 +1548,7 @@ document.getElementById('btn-cancel-sale').addEventListener('click', async ()=>{
       } else {
         // venda normal, ou pré-venda já entregue (estoque já havia sido baixado): devolve ao estoque
         const novoEstoque = p.stock + it.qty;
-        batch.update(ref, {stock: novoEstoque});
+        batch.update(ref, {stock: novoEstoque, totalSold: firebase.firestore.FieldValue.increment(-it.qty)});
       }
       batch.set(db.collection('movements').doc(), {
         date: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1545,7 +1591,7 @@ document.getElementById('btn-undo-cancel-sale').addEventListener('click', async 
         batch.update(ref, {presaleQty: (p.presaleQty||0) + it.qty});
       } else {
         // venda normal, ou pré-venda já entregue: desconta do estoque de novo
-        batch.update(ref, {stock: Math.max(p.stock - it.qty, 0)});
+        batch.update(ref, {stock: Math.max(p.stock - it.qty, 0), totalSold: firebase.firestore.FieldValue.increment(it.qty)});
       }
       batch.set(db.collection('movements').doc(), {
         date: firebase.firestore.FieldValue.serverTimestamp(),
