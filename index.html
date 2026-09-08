@@ -331,8 +331,13 @@
             <button class="link-btn" id="btn-clear-cart">Limpar</button>
           </div>
           <div id="cart-list"><div class="empty-state"><div class="glyph">🧺</div>Carrinho vazio</div></div>
-          <div style="display:flex; justify-content:space-between; align-items:baseline; margin:14px 0;">
-            <span style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim);">Total</span>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin:14px 0 6px;">
+            <span style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim);">Subtotal</span>
+            <span class="mono" style="font-size:15px; color:var(--ink-2);" id="cart-subtotal">R$ 0,00</span>
+          </div>
+          <div class="field" style="margin-bottom:10px;"><label>Desconto (R$)</label><input type="text" inputmode="decimal" id="cart-discount" placeholder="0,00"></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin:0 0 14px;">
+            <span style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim);">Total a pagar</span>
             <span style="font-family:'IBM Plex Mono'; font-size:28px; color:var(--brass); font-weight:600;" id="cart-total">R$ 0,00</span>
           </div>
 
@@ -501,7 +506,7 @@
 <div class="modal-bg" id="modal-product">
   <div class="modal">
     <button class="close-x" data-close="modal-product">✕</button>
-    <h3>Novo produto</h3>
+    <h3 id="product-modal-title">Novo produto</h3>
     <div class="field"><label>Nome</label><input id="np-name" type="text"></div>
     <div class="row-flex">
       <div class="field"><label>Cor / Variante</label><input id="np-category" type="text" placeholder="Ex: Azul, Preta, Único"></div>
@@ -511,7 +516,8 @@
       <div class="field"><label>Preço de custo (R$)</label><input id="np-cost" type="text" inputmode="decimal" placeholder="0,00"></div>
       <div class="field"><label>Preço de venda (R$)</label><input id="np-price" type="text" inputmode="decimal" placeholder="0,00"></div>
     </div>
-    <div class="field"><label>Estoque inicial</label><input id="np-stock" type="number" value="0" min="0"></div>
+    <div class="field"><label id="np-stock-label">Estoque inicial</label><input id="np-stock" type="number" value="0" min="0"></div>
+    <div id="np-stock-hint" style="display:none; font-size:11.5px; color:var(--text-dim); margin:-6px 0 12px;">Para ajustar o estoque, use a aba Movimentações (assim fica registrado o motivo). Aqui você só edita os dados cadastrais.</div>
     <button class="btn btn-brass btn-block" id="btn-save-product">Salvar produto</button>
   </div>
 </div>
@@ -550,6 +556,18 @@
     </div>
     <div id="sale-modal-cancelled-msg" style="display:none; font-size:13px; color:var(--stamp); font-weight:600; margin-top:6px;"></div>
     <button class="btn btn-ghost btn-block" id="btn-undo-cancel-sale" style="display:none; margin-top:12px;">Desfazer cancelamento</button>
+  </div>
+</div>
+
+<!-- Modal: trocar um item dentro de uma venda (ex: PP por P) -->
+<div class="modal-bg" id="modal-exchange">
+  <div class="modal">
+    <button class="close-x" data-close="modal-exchange">✕</button>
+    <h3>Trocar item</h3>
+    <div style="font-size:13px; color:var(--text-dim); margin-bottom:14px;">Item atual: <strong id="exchange-current-desc" style="color:var(--ink-2);"></strong></div>
+    <div class="field"><label>Trocar por</label><select id="exchange-new-product"></select></div>
+    <div style="font-size:11.5px; color:var(--text-dim); margin:-4px 0 14px;">O valor da venda não muda — o item só é substituído no estoque e no comprovante. Se o preço do novo item for diferente, ajuste com um desconto na próxima venda, se necessário.</div>
+    <button class="btn btn-brass btn-block" id="btn-confirm-exchange">Confirmar troca</button>
   </div>
 </div>
 
@@ -787,19 +805,68 @@ function renderProducts(){
       <td class="mono ${p.stock<=p.minStock ? 'low-stock':''}">${p.stock}</td>
       <td class="mono ${pre>0?'presale-qty':''}">${pre>0?pre:'—'}</td>
       <td class="mono">${p.totalSold||0}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="deleteProduct('${p.id}')">Excluir</button></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.id}')">Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteProduct('${p.id}')">Excluir</button>
+      </td>
     </tr>`;
   }).join('');
 }
 
-document.getElementById('btn-new-product').addEventListener('click', ()=>openModal('modal-product'));
+document.getElementById('btn-new-product').addEventListener('click', ()=>{
+  editingProductId = null;
+  document.getElementById('product-modal-title').textContent = 'Novo produto';
+  ['np-name','np-category','np-cost','np-price','np-min'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('np-stock').value = '0';
+  document.getElementById('np-stock').disabled = false;
+  document.getElementById('np-stock-label').textContent = 'Estoque inicial';
+  document.getElementById('np-stock-hint').style.display = 'none';
+  openModal('modal-product');
+});
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>closeModal(b.dataset.close)));
 function openModal(id){ document.getElementById(id).classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
+let editingProductId = null;
+
+function editProduct(id){
+  const p = products.find(x=>x.id===id);
+  if(!p){ showToast('Produto não encontrado.'); return; }
+  editingProductId = id;
+  document.getElementById('product-modal-title').textContent = 'Editar produto';
+  document.getElementById('np-name').value = p.name || '';
+  document.getElementById('np-category').value = p.category || '';
+  document.getElementById('np-min').value = p.minStock || 0;
+  document.getElementById('np-cost').value = String(p.costPrice||0).replace('.',',');
+  document.getElementById('np-price').value = String(p.salePrice||0).replace('.',',');
+  document.getElementById('np-stock').value = p.stock || 0;
+  document.getElementById('np-stock').disabled = true;
+  document.getElementById('np-stock-label').textContent = 'Estoque atual';
+  document.getElementById('np-stock-hint').style.display = 'block';
+  openModal('modal-product');
+}
+
 document.getElementById('btn-save-product').addEventListener('click', async ()=>{
   const name = document.getElementById('np-name').value.trim();
   if(!name){ showToast('Informe o nome do produto.'); return; }
+  if(editingProductId){
+    const data = {
+      name,
+      category: document.getElementById('np-category').value.trim(),
+      costPrice: parseBRLInput(document.getElementById('np-cost').value),
+      salePrice: parseBRLInput(document.getElementById('np-price').value),
+      minStock: parseInt(document.getElementById('np-min').value)||0
+    };
+    try{
+      await db.collection('products').doc(editingProductId).update(data);
+      closeModal('modal-product');
+      showToast('Produto atualizado.');
+    }catch(err){
+      console.error(err);
+      showToast('Erro ao atualizar o produto.');
+    }
+    return;
+  }
   const data = {
     name,
     category: document.getElementById('np-category').value.trim(),
@@ -910,6 +977,12 @@ let productSearchTerm = '';
 
 function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
 function cartTotal(){ return cart.reduce((s,c)=>s + c.unitPrice*c.qty, 0); }
+function discountValue(){
+  const raw = parseBRLInput(document.getElementById('cart-discount').value);
+  if(!raw || raw<0) return 0;
+  return Math.min(round2(raw), round2(cartTotal()));
+}
+function cartFinalTotal(){ return round2(Math.max(cartTotal() - discountValue(), 0)); }
 
 document.getElementById('product-search').addEventListener('input', e=>{
   productSearchTerm = e.target.value;
@@ -967,9 +1040,10 @@ function renderCart(){
         </div>
       </div>`).join('');
   }
-  document.getElementById('cart-total').textContent = fmtBRL(cartTotal());
+  document.getElementById('cart-subtotal').textContent = fmtBRL(cartTotal());
+  document.getElementById('cart-total').textContent = fmtBRL(cartFinalTotal());
   document.getElementById('presale-contact-box').style.display = cart.some(c=>c.presale) ? 'block' : 'none';
-  if(paymentRows.length===1){ paymentRows[0].amount = round2(cartTotal()); }
+  if(paymentRows.length===1){ paymentRows[0].amount = round2(cartFinalTotal()); }
   renderPaymentRows();
 }
 function changeCartQty(i, delta){
@@ -980,11 +1054,14 @@ function changeCartQty(i, delta){
   if(c.qty<=0) cart.splice(i,1);
   renderCart();
 }
+document.getElementById('cart-discount').addEventListener('input', renderCart);
+
 function removeCartItem(i){ cart.splice(i,1); renderCart(); }
 document.getElementById('btn-clear-cart').addEventListener('click', ()=>{
   cart = [];
   paymentRows = [{method:'Pix', amount:0}];
   const cashEl = document.getElementById('cash-received'); if(cashEl) cashEl.value='';
+  document.getElementById('cart-discount').value = '';
   document.getElementById('presale-customer-name').value='';
   document.getElementById('presale-customer-phone').value='';
   document.getElementById('receipt-holder').innerHTML = '';
@@ -1030,9 +1107,9 @@ function renderPaymentRows(){
   }
 
   const allocated = round2(paymentRows.reduce((s,r)=>s+(r.amount||0),0));
-  const remaining = round2(cartTotal() - allocated);
+  const remaining = round2(cartFinalTotal() - allocated);
   const remEl = document.getElementById('pay-remaining');
-  if(cartTotal()===0){
+  if(cartFinalTotal()===0){
     remEl.textContent = ''; remEl.className='';
   } else if(Math.abs(remaining) < 0.01){
     remEl.textContent = 'Pagamento completo.'; remEl.className = 'ok';
@@ -1053,12 +1130,12 @@ function setPaymentInstallmentsCustom(i, value){ paymentRows[i].installments = M
 function removePaymentRow(i){
   if(paymentRows.length<=1) return;
   paymentRows.splice(i,1);
-  if(paymentRows.length===1){ paymentRows[0].amount = round2(cartTotal()); }
+  if(paymentRows.length===1){ paymentRows[0].amount = round2(cartFinalTotal()); }
   renderPaymentRows();
 }
 document.getElementById('btn-add-payment').addEventListener('click', ()=>{
   const allocated = round2(paymentRows.reduce((s,r)=>s+(r.amount||0),0));
-  const remaining = Math.max(round2(cartTotal() - allocated), 0);
+  const remaining = Math.max(round2(cartFinalTotal() - allocated), 0);
   const used = paymentRows.map(r=>r.method);
   const next = PAY_METHODS.find(m=>!used.includes(m)) || 'Dinheiro';
   paymentRows.push({method: next, amount: remaining, installments:1});
@@ -1068,7 +1145,8 @@ document.getElementById('cash-received').addEventListener('input', renderPayment
 
 document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
   if(cart.length===0){ showToast('Adicione ao menos um produto.'); return; }
-  const total = round2(cartTotal());
+  const total = round2(cartFinalTotal());
+  const discount = round2(discountValue());
   const allocated = round2(paymentRows.reduce((s,r)=>s+(r.amount||0),0));
   if(Math.abs(total-allocated) >= 0.01){ showToast('A soma das formas de pagamento precisa fechar com o total da venda.'); return; }
   const paymentsClean = paymentRows.filter(r=>r.amount>0).map(r=>({
@@ -1095,6 +1173,8 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
   const saleData = {
     date: firebase.firestore.FieldValue.serverTimestamp(),
     items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:round2(c.unitPrice*c.qty), presale: !!c.presale})),
+    subtotal: round2(cartTotal()),
+    discount,
     total,
     payments: paymentsClean,
     cashReceived, changeGiven,
@@ -1134,6 +1214,7 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     cart = [];
     paymentRows = [{method:'Pix', amount:0}];
     document.getElementById('cash-received').value='';
+    document.getElementById('cart-discount').value='';
     document.getElementById('presale-customer-name').value='';
     document.getElementById('presale-customer-phone').value='';
     renderCart();
@@ -1162,6 +1243,7 @@ function showReceipt(sale){
       <div class="sub">comprovante de venda</div>
       ${sale.items.map(i=>`<div class="rline"><span>${i.qty}× ${i.name}${i.presale?' (pré-venda)':''}</span><span>${fmtBRL(i.subtotal)}</span></div>`).join('')}
       <hr>
+      ${sale.discount ? `<div class="rline"><span>Subtotal</span><span>${fmtBRL(sale.subtotal!=null?sale.subtotal:sale.total+sale.discount)}</span></div><div class="rline"><span>Desconto</span><span>−${fmtBRL(sale.discount)}</span></div>` : ''}
       <div class="rline total"><span>TOTAL</span><span>${fmtBRL(sale.total)}</span></div>
       ${sale.payments.map(p=>`<div class="rline"><span>${paymentLabel(p)}</span><span>${fmtBRL(p.amount)}</span></div>`).join('')}
       ${sale.changeGiven ? `<div class="rline"><span>Troco</span><span>${fmtBRL(sale.changeGiven)}</span></div>` : ''}
@@ -1318,7 +1400,8 @@ const MOV_CATEGORY_LABELS = {
   venda: {label:'Venda', cls:'tag-venda'},
   cancelamento: {label:'Cancelamento', cls:'tag-cancelamento'},
   presale: {label:'Pré-venda', cls:'tag-presale'},
-  baixa_presale: {label:'Baixa por pré-venda', cls:'tag-baixa-presale'}
+  baixa_presale: {label:'Baixa por pré-venda', cls:'tag-baixa-presale'},
+  troca: {label:'Troca', cls:'tag-venda'}
 };
 function movTagHtml(m){
   const info = MOV_CATEGORY_LABELS[m.category] || (m.type==='entrada' ? {label:'Entrada', cls:'tag-entrada'} : {label:'Saída', cls:'tag-saida'});
@@ -1343,6 +1426,75 @@ function renderMovements(){
 }
 
 /* -------------------------- detalhes / editar venda ------------------------- */
+/* ------------------------- troca de item numa venda ------------------------- */
+let exchangeItemIndex = null;
+
+function openExchangeModal(idx){
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(!s) return;
+  const item = s.items[idx];
+  if(!item) return;
+  exchangeItemIndex = idx;
+  document.getElementById('exchange-current-desc').textContent = `${item.qty}× ${item.name}${item.category?' - '+item.category:''} (${fmtBRL(item.unitPrice)} un.)`;
+  const select = document.getElementById('exchange-new-product');
+  const options = [...products]
+    .filter(p=>p.id!==item.productId)
+    .sort((a,b)=> a.name.localeCompare(b.name,'pt-BR') || (a.category||'').localeCompare(b.category||'','pt-BR'));
+  select.innerHTML = options.length
+    ? options.map(p=>`<option value="${p.id}">${p.name}${p.category?' - '+p.category:''} (saldo ${p.stock})</option>`).join('')
+    : `<option value="">Nenhum outro produto cadastrado</option>`;
+  openModal('modal-exchange');
+}
+
+document.getElementById('btn-confirm-exchange').addEventListener('click', async ()=>{
+  if(exchangeItemIndex===null || !currentSaleModalId) return;
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(!s) return;
+  const item = s.items[exchangeItemIndex];
+  const newProductId = document.getElementById('exchange-new-product').value;
+  if(!item || !newProductId){ showToast('Selecione o produto para trocar.'); return; }
+  const newProduct = products.find(p=>p.id===newProductId);
+  const oldProduct = products.find(p=>p.id===item.productId);
+  if(!newProduct){ showToast('Produto não encontrado.'); return; }
+  if(newProduct.stock < item.qty){ showToast(`Estoque insuficiente de "${newProduct.name}" (${newProduct.stock} disponível).`); return; }
+  if(!confirm(`Trocar ${item.qty}× "${item.name}" por ${item.qty}× "${newProduct.name}"? O valor total da venda não muda.`)) return;
+  try{
+    const batch = db.batch();
+    const user = emailParaUsuario(currentUser.email);
+    if(oldProduct){
+      batch.update(db.collection('products').doc(item.productId), {
+        stock: firebase.firestore.FieldValue.increment(item.qty),
+        totalSold: firebase.firestore.FieldValue.increment(-item.qty)
+      });
+    }
+    batch.update(db.collection('products').doc(newProductId), {
+      stock: firebase.firestore.FieldValue.increment(-item.qty),
+      totalSold: firebase.firestore.FieldValue.increment(item.qty)
+    });
+    batch.set(db.collection('movements').doc(), {
+      date: firebase.firestore.FieldValue.serverTimestamp(),
+      productId: item.productId, productName: item.name, type:'entrada', category:'troca', label:'Troca (devolução)',
+      qty: item.qty, reason: `Trocado por "${newProduct.name}"`, user, saleId: currentSaleModalId
+    });
+    batch.set(db.collection('movements').doc(), {
+      date: firebase.firestore.FieldValue.serverTimestamp(),
+      productId: newProductId, productName: newProduct.name, type:'saida', category:'troca', label:'Troca (novo item)',
+      qty: item.qty, reason: `Troca de "${item.name}"`, user, saleId: currentSaleModalId
+    });
+    const newItems = s.items.map((it,i)=> i===exchangeItemIndex
+      ? {...it, productId:newProductId, name:newProduct.name, category:newProduct.category||''}
+      : it);
+    batch.update(db.collection('sales').doc(currentSaleModalId), {items: newItems});
+    await batch.commit();
+    closeModal('modal-exchange');
+    showToast('Troca registrada com sucesso.');
+    setTimeout(()=>openSaleModal(currentSaleModalId), 300);
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao registrar a troca.');
+  }
+});
+
 let currentSaleModalId = null;
 let modalPaymentRows = [];
 
@@ -1363,10 +1515,16 @@ async function openSaleModal(saleId){
   }
   if(!s){ showToast('Venda não encontrada.'); return; }
   currentSaleModalId = saleId;
-  document.getElementById('sale-modal-items').innerHTML = s.items.map(i=>
-    `<div class="rline" style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${i.qty}× ${i.name}${i.presale?' <span class="tag tag-presale" style="font-size:9px; padding:1px 6px;">pré-venda</span>':''}</span><span class="mono">${fmtBRL(i.subtotal)}</span></div>`
+  document.getElementById('sale-modal-items').innerHTML = s.items.map((i,idx)=>
+    `<div class="rline" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:8px;">
+      <span>${i.qty}× ${i.name}${i.presale?' <span class="tag tag-presale" style="font-size:9px; padding:1px 6px;">pré-venda</span>':''}</span>
+      <span style="display:flex; align-items:center; gap:8px;">
+        <span class="mono">${fmtBRL(i.subtotal)}</span>
+        ${(!s.cancelled && !i.presale) ? `<button class="link-btn" onclick="openExchangeModal(${idx})">trocar</button>` : ''}
+      </span>
+    </div>`
   ).join('');
-  document.getElementById('sale-modal-total').textContent = fmtBRL(s.total);
+  document.getElementById('sale-modal-total').innerHTML = s.discount ? `${fmtBRL(s.total)} <span style="font-size:12px; color:var(--text-dim); font-family:inherit;">(desconto de ${fmtBRL(s.discount)} já aplicado)</span>` : fmtBRL(s.total);
 
   const contactBox = document.getElementById('sale-modal-contact-box');
   if(s.hasPresale){
