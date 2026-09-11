@@ -388,17 +388,27 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:10px;">
           <h2 style="margin:0;">Produtos <span class="count" id="prod-count"></span></h2>
           <div style="display:flex; gap:8px;">
-            <button class="btn btn-ghost btn-sm" id="btn-recalc-sold" title="Recalcula o total vendido de cada produto com base em todo o histórico já registrado (rode uma vez após esta atualização)">Recalcular vendido</button>
             <button class="btn btn-ghost btn-sm" id="btn-import-csv">Importar CSV</button>
             <input type="file" id="csv-file-input" accept=".csv" style="display:none;">
             <button class="btn btn-brass btn-sm" id="btn-new-product">+ Novo produto</button>
           </div>
         </div>
         <div id="csv-import-status" style="font-size:12.5px; color:var(--text-dim); margin-bottom:12px;"></div>
+        <div style="font-size:11.5px; color:var(--text-dim); margin-bottom:12px;">
+          <strong>Confere</strong> mostra Inicial + Entradas − Saídas − Vendido comparado ao Estoque atual. ✓ quer dizer que bate. Um número em vermelho é a diferença — vale investigar.
+          "Vendas totais" conta toda venda já registrada desse produto (mesmo as que depois foram canceladas); "Vendido" já desconta cancelamentos e é o que entra na conta do estoque.
+        </div>
+        <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th><th>Estoque</th><th>Pré-venda</th><th>Vendido</th><th></th></tr></thead>
+          <thead><tr>
+            <th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th>
+            <th>Estoque inicial</th><th>Entradas</th><th>Saídas</th>
+            <th>Vendas totais</th><th>Vendido</th><th>Estoque atual</th><th>Confere</th>
+            <th>Pré-venda</th><th></th>
+          </tr></thead>
           <tbody id="products-table"></tbody>
         </table>
+        </div>
       </div>
     </section>
 
@@ -517,7 +527,15 @@
       <div class="field"><label>Preço de venda (R$)</label><input id="np-price" type="text" inputmode="decimal" placeholder="0,00"></div>
     </div>
     <div class="field"><label id="np-stock-label">Estoque inicial</label><input id="np-stock" type="number" value="0" min="0"></div>
-    <div id="np-stock-hint" style="display:none; font-size:11.5px; color:var(--text-dim); margin:-6px 0 12px;">Para ajustar o estoque, use a aba Movimentações (assim fica registrado o motivo). Aqui você só edita os dados cadastrais.</div>
+    <div id="np-stock-hint" style="display:none; font-size:11.5px; color:var(--text-dim); margin:-6px 0 12px;">Este é o estoque físico atual (o que tem na loja agora). Para ajustar, use a aba Movimentações (assim fica registrado o motivo) — aqui você só edita os dados cadastrais.</div>
+    <div class="field" id="np-baseline-box" style="display:none;">
+      <label>Estoque inicial (linha de base p/ conferência)</label>
+      <input id="np-baseline-stock" type="number" min="0" placeholder="Deixe em branco se não souber">
+      <div style="font-size:11.5px; color:var(--text-dim); margin-top:5px;">
+        Isso não muda o estoque atual — é só um registro do quanto você tinha quando começou a controlar esse produto.
+        Serve para conferir na aba Estoque se <span class="mono">Inicial + Entradas − Saídas − Vendido</span> bate com o estoque atual.
+      </div>
+    </div>
     <button class="btn btn-brass btn-block" id="btn-save-product">Salvar produto</button>
   </div>
 </div>
@@ -528,7 +546,22 @@
     <button class="close-x" data-close="modal-sale">✕</button>
     <h3>Detalhes da venda</h3>
     <div id="sale-modal-items" style="margin-bottom:14px; font-size:13.5px;"></div>
-    <div style="font-family:'IBM Plex Mono'; font-size:22px; color:var(--brass-dim); margin-bottom:16px;" id="sale-modal-total"></div>
+    <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+      <div style="font-family:'IBM Plex Mono'; font-size:22px; color:var(--brass-dim);" id="sale-modal-total"></div>
+      <button class="link-btn" id="btn-toggle-correct-total" style="display:none;">corrigir valor</button>
+    </div>
+    <div id="sale-modal-correct-box" style="display:none; margin:0 0 16px; padding:12px 14px; border:1px dashed var(--stamp); border-radius:8px; background:var(--panel-alt);">
+      <div style="font-size:12px; color:var(--ink-2); margin-bottom:10px; line-height:1.4;">
+        Use isso quando o valor registrado estiver errado (ex: sistema marcou R$ 12,50 mas o cliente pagou R$ 12,00).
+        Isso NÃO mexe no estoque — só corrige o valor da venda no relatório e no caixa. Depois de corrigir, ajuste também a forma de pagamento abaixo para fechar com o novo total.
+      </div>
+      <div class="row-flex">
+        <div class="field"><label>Novo total (R$)</label><input type="text" inputmode="decimal" id="correct-total-value" placeholder="0,00"></div>
+      </div>
+      <div class="field"><label>Motivo (obrigatório)</label><input type="text" id="correct-total-reason" placeholder="Ex: valor batido errado, cliente pagou 12,00 e não 12,50"></div>
+      <button class="btn btn-stamp btn-sm" id="btn-save-correct-total">Salvar correção de valor</button>
+    </div>
+    <div id="sale-modal-correction-log" style="font-size:11.5px; color:var(--text-dim); margin:-10px 0 14px;"></div>
     <div id="sale-modal-contact-box" style="display:none; margin:0 0 16px; padding:12px 14px; border:1px dashed var(--brass-dim); border-radius:8px; background:var(--panel-alt);">
       <div style="font-size:12px; color:var(--ink-2); margin-bottom:10px; line-height:1.4;">Contato do cliente (pré-venda):</div>
       <div class="row-flex">
@@ -656,7 +689,7 @@ function salePayments(sale){
   return [];
 }
 function paymentsTagsHtml(sale){
-  return salePayments(sale).map(p=>`<span class="tag ${payTagClass(p.method)}" style="margin:1px 4px 1px 0; display:inline-block;">${paymentLabel(p)} ${fmtBRL(p.amount)}</span>`).join('');
+  return salePayments(sale).map(p=>`<span class="tag ${payTagClass(p.method)}" style="margin:1px 4px 3px 0; display:inline-block;">${paymentLabel(p)} ${fmtBRL(p.amount)}</span>`).join('<br>');
 }
 function parseBRLInput(str){
   if(!str) return 0;
@@ -742,69 +775,42 @@ function attachListeners(){
   });
 }
 
-/* Recálculo único do total vendido, com base em TODO o histórico de vendas (sem limite de 500).
-   Roda sob demanda (botão), não em todo carregamento da tela — por isso não pesa no dia a dia. */
-document.getElementById('btn-recalc-sold').addEventListener('click', async ()=>{
-  if(!confirm('Isso vai recalcular a coluna "Vendido" de todos os produtos, somando todo o histórico de vendas já registrado (sem limite). Pode levar alguns segundos dependendo do tamanho do histórico. Continuar?')) return;
-  showToast('Recalculando a partir do histórico... aguarde.');
-  try{
-    const totals = {};
-    let lastDoc = null, lidos = 0;
-    while(true){
-      let q = db.collection('sales').orderBy('date').limit(400);
-      if(lastDoc) q = q.startAfter(lastDoc);
-      const snap = await q.get();
-      if(snap.empty) break;
-      snap.docs.forEach(doc=>{
-        const s = doc.data();
-        if(s.cancelled) return; // vendas canceladas não contam
-        (s.items||[]).forEach(it=>{
-          // conta itens vendidos normalmente, e itens de pré-venda só depois de entregues
-          if(!it.presale || s.presaleStatus==='entregue'){
-            totals[it.productId] = (totals[it.productId]||0) + it.qty;
-          }
-        });
-      });
-      lidos += snap.docs.length;
-      lastDoc = snap.docs[snap.docs.length-1];
-      if(snap.docs.length < 400) break;
-    }
-    const batches = [db.batch()];
-    let ops = 0;
-    function addUpdate(pid, valor){
-      let cur = batches[batches.length-1];
-      if(ops>=450){ cur = db.batch(); batches.push(cur); ops=0; }
-      cur.update(db.collection('products').doc(pid), {totalSold: valor});
-      ops++;
-    }
-    products.forEach(p=> addUpdate(p.id, totals[p.id]||0));
-    for(const b of batches){ await b.commit(); }
-    showToast(`Pronto! Recalculado com base em ${lidos} venda(s) do histórico.`);
-  }catch(err){
-    console.error(err);
-    showToast('Erro ao recalcular o histórico.');
-  }
-});
-
 /* ------------------------------ produtos --------------------------------- */
 function renderProducts(){
   const tbody = document.getElementById('products-table');
   document.getElementById('prod-count').textContent = `(${products.length})`;
   if(products.length===0){
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="glyph">📦</div>Nenhum produto cadastrado ainda</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><div class="glyph">📦</div>Nenhum produto cadastrado ainda</div></td></tr>`;
     return;
   }
   tbody.innerHTML = products.map(p=>{
     const pre = p.presaleQty||0;
+    const hasBaseline = p.initialStock!==null && p.initialStock!==undefined;
+    const entradas = p.totalEntradas||0;
+    const saidas = p.totalSaidas||0;
+    const vendido = p.totalSold||0;
+    let conferHtml = '<span style="color:var(--text-dim);">—</span>';
+    if(hasBaseline){
+      const esperado = p.initialStock + entradas - saidas - vendido;
+      const diff = p.stock - esperado;
+      conferHtml = Math.abs(diff) < 0.5
+        ? '<span style="color:var(--green-ok); font-weight:600;">✓</span>'
+        : `<span class="low-stock" title="Estoque atual menos o esperado (Inicial+Entradas-Saídas-Vendido)">${diff>0?'+':''}${diff}</span>`;
+    }
     return `
     <tr>
       <td>${p.name}</td>
       <td>${p.category||'—'}</td>
       <td class="mono">${fmtBRL(p.costPrice)}</td>
       <td class="mono">${fmtBRL(p.salePrice)}</td>
+      <td class="mono">${hasBaseline ? p.initialStock : '<span style="color:var(--text-dim);">—</span>'}</td>
+      <td class="mono">${entradas}</td>
+      <td class="mono">${saidas}</td>
+      <td class="mono">${p.totalSoldGross||0}</td>
+      <td class="mono">${vendido}</td>
       <td class="mono ${p.stock<=p.minStock ? 'low-stock':''}">${p.stock}</td>
+      <td class="mono">${conferHtml}</td>
       <td class="mono ${pre>0?'presale-qty':''}">${pre>0?pre:'—'}</td>
-      <td class="mono">${p.totalSold||0}</td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.id}')">Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="deleteProduct('${p.id}')">Excluir</button>
@@ -821,6 +827,8 @@ document.getElementById('btn-new-product').addEventListener('click', ()=>{
   document.getElementById('np-stock').disabled = false;
   document.getElementById('np-stock-label').textContent = 'Estoque inicial';
   document.getElementById('np-stock-hint').style.display = 'none';
+  document.getElementById('np-baseline-box').style.display = 'none';
+  document.getElementById('np-baseline-stock').value = '';
   openModal('modal-product');
 });
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>closeModal(b.dataset.close)));
@@ -843,6 +851,8 @@ function editProduct(id){
   document.getElementById('np-stock').disabled = true;
   document.getElementById('np-stock-label').textContent = 'Estoque atual';
   document.getElementById('np-stock-hint').style.display = 'block';
+  document.getElementById('np-baseline-box').style.display = 'block';
+  document.getElementById('np-baseline-stock').value = (p.initialStock===null || p.initialStock===undefined) ? '' : p.initialStock;
   openModal('modal-product');
 }
 
@@ -850,12 +860,14 @@ document.getElementById('btn-save-product').addEventListener('click', async ()=>
   const name = document.getElementById('np-name').value.trim();
   if(!name){ showToast('Informe o nome do produto.'); return; }
   if(editingProductId){
+    const baselineRaw = document.getElementById('np-baseline-stock').value.trim();
     const data = {
       name,
       category: document.getElementById('np-category').value.trim(),
       costPrice: parseBRLInput(document.getElementById('np-cost').value),
       salePrice: parseBRLInput(document.getElementById('np-price').value),
-      minStock: parseInt(document.getElementById('np-min').value)||0
+      minStock: parseInt(document.getElementById('np-min').value)||0,
+      initialStock: baselineRaw==='' ? null : (parseInt(baselineRaw)||0)
     };
     try{
       await db.collection('products').doc(editingProductId).update(data);
@@ -867,18 +879,24 @@ document.getElementById('btn-save-product').addEventListener('click', async ()=>
     }
     return;
   }
+  const startStock = parseInt(document.getElementById('np-stock').value)||0;
   const data = {
     name,
     category: document.getElementById('np-category').value.trim(),
     costPrice: parseBRLInput(document.getElementById('np-cost').value),
     salePrice: parseBRLInput(document.getElementById('np-price').value),
     minStock: parseInt(document.getElementById('np-min').value)||0,
-    stock: parseInt(document.getElementById('np-stock').value)||0,
+    stock: startStock,
+    initialStock: startStock,
+    totalEntradas: 0,
+    totalSaidas: 0,
     totalSold: 0,
+    totalSoldGross: 0,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   await db.collection('products').add(data);
   ['np-name','np-category','np-cost','np-price','np-min','np-stock'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('np-baseline-stock').value='';
   closeModal('modal-product');
   showToast('Produto cadastrado.');
 });
@@ -947,7 +965,9 @@ document.getElementById('csv-file-input').addEventListener('change', async (e)=>
       } else {
         curBatch.set(db.collection('products').doc(), {
           name: nome, category: cor, costPrice: custo, salePrice: venda,
-          stock: estoque, minStock: 0, totalSold: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          stock: estoque, initialStock: estoque, minStock: 0,
+          totalEntradas: 0, totalSaidas: 0, totalSold: 0, totalSoldGross: 0,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         criados++;
       }
@@ -1201,7 +1221,11 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
           qty: c.qty, reason:'Venda registrada como pré-venda', user: seller, saleId: saleRef.id
         });
       } else {
-        batch.update(ref, {stock: (p.stock - c.qty), totalSold: firebase.firestore.FieldValue.increment(c.qty)});
+        batch.update(ref, {
+          stock: (p.stock - c.qty),
+          totalSold: firebase.firestore.FieldValue.increment(c.qty),
+          totalSoldGross: firebase.firestore.FieldValue.increment(c.qty)
+        });
         batch.set(db.collection('movements').doc(), {
           date: firebase.firestore.FieldValue.serverTimestamp(),
           productId: c.productId, productName: c.name, type:'saida', category:'venda', label:'Venda',
@@ -1330,7 +1354,7 @@ async function markPresaleFulfilled(saleId){
       } else {
         const novoPresale = Math.max((p.presaleQty||0) - it.qty, 0);
         const novoEstoque = Math.max(p.stock - it.qty, 0);
-        batch.update(ref, {presaleQty: novoPresale, stock: novoEstoque, totalSold: firebase.firestore.FieldValue.increment(it.qty)});
+        batch.update(ref, {presaleQty: novoPresale, stock: novoEstoque, totalSold: firebase.firestore.FieldValue.increment(it.qty), totalSoldGross: firebase.firestore.FieldValue.increment(it.qty)});
       }
       batch.set(db.collection('movements').doc(), {
         date: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1380,7 +1404,11 @@ document.getElementById('btn-add-mov').addEventListener('click', async ()=>{
       productId: pid, productName: p.name, type: mapping.base, category: movOption, label: mapping.label,
       qty, reason, user: emailParaUsuario(currentUser.email)
     });
-    batch.update(db.collection('products').doc(pid), {stock: p.stock + delta});
+    const counterField = mapping.base==='entrada' ? 'totalEntradas' : 'totalSaidas';
+    batch.update(db.collection('products').doc(pid), {
+      stock: p.stock + delta,
+      [counterField]: firebase.firestore.FieldValue.increment(qty)
+    });
     await batch.commit();
     document.getElementById('mov-qty').value = 1;
     document.getElementById('mov-reason').value = '';
@@ -1526,6 +1554,15 @@ async function openSaleModal(saleId){
   ).join('');
   document.getElementById('sale-modal-total').innerHTML = s.discount ? `${fmtBRL(s.total)} <span style="font-size:12px; color:var(--text-dim); font-family:inherit;">(desconto de ${fmtBRL(s.discount)} já aplicado)</span>` : fmtBRL(s.total);
 
+  document.getElementById('sale-modal-correct-box').style.display = 'none';
+  document.getElementById('correct-total-value').value = '';
+  document.getElementById('correct-total-reason').value = '';
+  document.getElementById('btn-toggle-correct-total').style.display = s.cancelled ? 'none' : 'inline';
+  const corrections = s.totalCorrections || [];
+  document.getElementById('sale-modal-correction-log').innerHTML = corrections.length
+    ? 'Histórico de correções: ' + corrections.map(c=>`${fmtBRL(c.oldTotal)} → ${fmtBRL(c.newTotal)} (${c.reason}, por ${c.by})`).join('; ')
+    : '';
+
   const contactBox = document.getElementById('sale-modal-contact-box');
   if(s.hasPresale){
     contactBox.style.display = 'block';
@@ -1659,6 +1696,46 @@ document.getElementById('btn-save-payment').addEventListener('click', async ()=>
   }catch(err){
     console.error(err);
     showToast('Erro ao atualizar a forma de pagamento.');
+  }
+});
+
+document.getElementById('btn-toggle-correct-total').addEventListener('click', ()=>{
+  const box = document.getElementById('sale-modal-correct-box');
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(box.style.display==='none'){
+    box.style.display = 'block';
+    if(s) document.getElementById('correct-total-value').value = String(s.total).replace('.',',');
+  } else {
+    box.style.display = 'none';
+  }
+});
+
+document.getElementById('btn-save-correct-total').addEventListener('click', async ()=>{
+  if(!currentSaleModalId) return;
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(!s) return;
+  const newTotal = round2(parseBRLInput(document.getElementById('correct-total-value').value));
+  const reason = document.getElementById('correct-total-reason').value.trim();
+  if(newTotal<=0){ showToast('Informe um valor válido.'); return; }
+  if(!reason){ showToast('Informe o motivo da correção — fica registrado no histórico da venda.'); return; }
+  if(Math.abs(newTotal - s.total) < 0.01){ showToast('O novo valor é igual ao atual.'); return; }
+  if(!confirm(`Corrigir o total desta venda de ${fmtBRL(s.total)} para ${fmtBRL(newTotal)}?\n\nIsso NÃO altera o estoque, só o valor registrado. Você vai precisar ajustar a forma de pagamento em seguida para fechar com o novo total.`)) return;
+  const user = emailParaUsuario(currentUser.email);
+  const entry = {oldTotal: s.total, newTotal, reason, by: user, at: new Date().toISOString()};
+  try{
+    await db.collection('sales').doc(currentSaleModalId).update({
+      total: newTotal,
+      totalCorrections: firebase.firestore.FieldValue.arrayUnion(entry),
+      totalEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      totalEditedBy: user
+    });
+    s.total = newTotal;
+    s.totalCorrections = [...(s.totalCorrections||[]), entry];
+    showToast('Valor da venda corrigido. Agora ajuste a forma de pagamento abaixo, se precisar.');
+    openSaleModal(currentSaleModalId);
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao corrigir o valor da venda.');
   }
 });
 
@@ -1889,15 +1966,29 @@ async function runReport(){
     if(payFilter) filtered = filtered.filter(s=> salePayments(s).some(p=>p.method===payFilter));
     filtered.sort((a,b)=> (b.date?.toMillis?.()||0) - (a.date?.toMillis?.()||0));
 
-    const revenue = filtered.filter(s=>!s.cancelled).reduce((s,x)=>s+x.total,0);
-    const cost = filtered.filter(s=>!s.cancelled).reduce((sum,s)=>sum + s.items.reduce((si,i)=>{
-      const p = products.find(pp=>pp.id===i.productId);
-      return si + (p ? p.costPrice*i.qty : 0);
-    },0), 0);
+    // Quando há filtro de forma de pagamento, uma venda dividida (ex: parte Pix + parte
+    // Crédito) só deve contar a FATIA paga naquela forma — não o total da venda inteira.
+    // Sem isso, o faturamento por forma de pagamento saía inflado (somava o total cheio
+    // de qualquer venda que tivesse ao menos um pagamento naquela forma).
+    function saleRevenueForFilter(s){
+      if(!payFilter) return s.total;
+      return salePayments(s).filter(p=>p.method===payFilter).reduce((sum,p)=>sum+p.amount,0);
+    }
+    const activeSales = filtered.filter(s=>!s.cancelled);
+    const revenue = activeSales.reduce((s,x)=>s+saleRevenueForFilter(x),0);
+    const cost = activeSales.reduce((sum,s)=>{
+      const saleCost = s.items.reduce((si,i)=>{
+        const p = products.find(pp=>pp.id===i.productId);
+        return si + (p ? p.costPrice*i.qty : 0);
+      },0);
+      // Proporcional à fatia contada acima, para o lucro estimado continuar consistente.
+      const share = s.total>0 ? saleRevenueForFilter(s)/s.total : 0;
+      return sum + saleCost*share;
+    },0);
     document.getElementById('rep-revenue').textContent = fmtBRL(revenue);
     document.getElementById('rep-cost').textContent = fmtBRL(cost);
     document.getElementById('rep-profit').textContent = fmtBRL(revenue-cost);
-    document.getElementById('rep-count').textContent = filtered.filter(s=>!s.cancelled).length;
+    document.getElementById('rep-count').textContent = activeSales.length;
 
     const tbody = document.getElementById('report-table');
     tbody.innerHTML = filtered.length===0
