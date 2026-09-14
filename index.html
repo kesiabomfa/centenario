@@ -502,6 +502,13 @@
         <div class="stat-card"><div class="label">Nº de vendas</div><div class="value mono" id="rep-count">0</div></div>
       </div>
       <div class="panel">
+        <h2>Vendas por produto no período <span class="count" id="report-by-product-count"></span></h2>
+        <table>
+          <thead><tr><th>Produto</th><th>Cor / categoria</th><th>Quantidade</th><th>Total</th></tr></thead>
+          <tbody id="report-by-product"></tbody>
+        </table>
+      </div>
+      <div class="panel">
         <h2>Vendas no período</h2>
         <table>
           <thead><tr><th>Data</th><th>Itens</th><th>Forma</th><th>Vendedor</th><th>Total</th><th></th></tr></thead>
@@ -1989,6 +1996,35 @@ async function runReport(){
     document.getElementById('rep-cost').textContent = fmtBRL(cost);
     document.getElementById('rep-profit').textContent = fmtBRL(revenue-cost);
     document.getElementById('rep-count').textContent = activeSales.length;
+
+    // Resumo por produto/cor: soma as quantidades vendidas de cada item (ex: bíblia preta,
+    // bíblia azul etc.) dentro do período filtrado, ignorando vendas canceladas.
+    // Quando há filtro de forma de pagamento, uma venda dividida só deve contribuir com a
+    // fatia proporcional daquela forma, então distribuímos a quantidade de cada item pela
+    // mesma proporção usada no faturamento acima.
+    const byProduct = {};
+    activeSales.forEach(s=>{
+      const share = payFilter ? (s.total>0 ? saleRevenueForFilter(s)/s.total : 0) : 1;
+      if(share<=0) return;
+      (s.items||[]).forEach(it=>{
+        const key = it.productId || (it.name+'|'+(it.category||''));
+        if(!byProduct[key]) byProduct[key] = {name: it.name, category: it.category||'—', qty:0, total:0};
+        byProduct[key].qty += it.qty*share;
+        byProduct[key].total += it.subtotal*share;
+      });
+    });
+    const productRows = Object.values(byProduct).sort((a,b)=> b.qty-a.qty);
+    document.getElementById('report-by-product-count').textContent = productRows.length ? `(${productRows.length} itens)` : '';
+    const byProdEl = document.getElementById('report-by-product');
+    byProdEl.innerHTML = productRows.length===0
+      ? `<tr><td colspan="4"><div class="empty-state"><div class="glyph">📦</div>Nenhuma venda no período selecionado</div></td></tr>`
+      : productRows.map(r=>`
+        <tr>
+          <td>${r.name}</td>
+          <td>${r.category}</td>
+          <td class="mono">${Number.isInteger(r.qty) ? r.qty : r.qty.toFixed(2)}</td>
+          <td class="mono">${fmtBRL(r.total)}</td>
+        </tr>`).join('');
 
     const tbody = document.getElementById('report-table');
     tbody.innerHTML = filtered.length===0
