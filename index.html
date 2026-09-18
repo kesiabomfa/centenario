@@ -125,6 +125,19 @@
   .stat-card .value{ font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:600; color:var(--ink); }
   .stat-card .value.brass{ color:var(--brass); }
   .stat-card .value.stamp{ color:var(--stamp); }
+  .stat-card{ position:relative; }
+  .value-wrap{ display:flex; align-items:center; gap:8px; }
+  .value-hidden-text{ display:none; letter-spacing:2px; }
+  body.hide-values .value-wrap .value{ display:none; }
+  body.hide-values .value-wrap .value-hidden-text{ display:inline; }
+  .eye-toggle{
+    background:none; border:none; padding:4px; margin-left:auto; line-height:0;
+    color:var(--text-dim); border-radius:6px; transition:color .15s ease, background .15s ease;
+  }
+  .eye-toggle:hover{ color:var(--brass); background:rgba(169,118,43,.08); }
+  .eye-toggle svg{ width:18px; height:18px; display:block; }
+  .dash-heading-row{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+  .dash-heading-row h2{ margin-bottom:0; }
 
   .panel{
     background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:20px; box-shadow:var(--shadow);
@@ -290,13 +303,19 @@
   <main>
     <!-- ---------- DASHBOARD ---------- -->
     <section class="view active" id="view-dashboard">
-      <h2 style="margin-bottom:18px;">Painel de hoje</h2>
+      <div class="dash-heading-row">
+        <h2>Painel de hoje</h2>
+        <button class="eye-toggle" id="btn-toggle-values" title="Ocultar valores" aria-label="Ocultar valores">
+          <svg id="eye-icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg id="eye-icon-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.68M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+        </button>
+      </div>
       <div class="grid grid-5" style="margin-bottom:22px;">
-        <div class="stat-card"><div class="label">Vendas hoje</div><div class="value brass mono" id="stat-today-total">R$ 0,00</div></div>
-        <div class="stat-card"><div class="label">Nº de vendas</div><div class="value mono" id="stat-today-count">0</div></div>
-        <div class="stat-card"><div class="label">Vendas no mês</div><div class="value mono" id="stat-month-total">R$ 0,00</div></div>
-        <div class="stat-card"><div class="label">Itens em falta</div><div class="value stamp mono" id="stat-low-count">0</div></div>
-        <div class="stat-card"><div class="label">Itens em pré-venda</div><div class="value mono presale-qty" id="stat-presale-count">0</div></div>
+        <div class="stat-card"><div class="label">Vendas hoje</div><div class="value-wrap"><div class="value brass mono" id="stat-today-total">R$ 0,00</div><span class="value-hidden-text brass mono">••••••</span></div></div>
+        <div class="stat-card"><div class="label">Nº de vendas</div><div class="value-wrap"><div class="value mono" id="stat-today-count">0</div><span class="value-hidden-text mono">••</span></div></div>
+        <div class="stat-card"><div class="label">Vendas no mês</div><div class="value-wrap"><div class="value mono" id="stat-month-total">R$ 0,00</div><span class="value-hidden-text mono">••••••</span></div></div>
+        <div class="stat-card"><div class="label">Itens em falta</div><div class="value-wrap"><div class="value stamp mono" id="stat-low-count">0</div><span class="value-hidden-text stamp mono">••</span></div></div>
+        <div class="stat-card"><div class="label">Itens em pré-venda</div><div class="value-wrap"><div class="value mono presale-qty" id="stat-presale-count">0</div><span class="value-hidden-text mono">••</span></div></div>
       </div>
       <div class="grid grid-2">
         <div class="panel">
@@ -1857,6 +1876,28 @@ document.getElementById('btn-undo-cancel-sale').addEventListener('click', async 
     showToast('Erro ao desfazer o cancelamento.');
   }
 });
+
+/* -------------------------------- ocultar valores ---------------------------------- */
+(function(){
+  const btn = document.getElementById('btn-toggle-values');
+  const iconOpen = document.getElementById('eye-icon-open');
+  const iconClosed = document.getElementById('eye-icon-closed');
+  function applyState(hidden){
+    document.body.classList.toggle('hide-values', hidden);
+    iconOpen.style.display = hidden ? 'none' : 'block';
+    iconClosed.style.display = hidden ? 'block' : 'none';
+    btn.title = hidden ? 'Mostrar valores' : 'Ocultar valores';
+    btn.setAttribute('aria-label', btn.title);
+  }
+  let hidden = false;
+  try{ hidden = localStorage.getItem('centenario-hide-values') === '1'; }catch(e){}
+  applyState(hidden);
+  btn.addEventListener('click', ()=>{
+    hidden = !hidden;
+    applyState(hidden);
+    try{ localStorage.setItem('centenario-hide-values', hidden ? '1' : '0'); }catch(e){}
+  });
+})();
 
 /* -------------------------------- painel ---------------------------------- */
 function renderDashboard(){
