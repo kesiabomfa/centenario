@@ -296,7 +296,6 @@
     <button data-view="venda">Nova venda</button>
     <button data-view="estoque">Estoque</button>
     <button data-view="movimentacoes">Movimentações</button>
-    <button data-view="presales">Pré-vendas</button>
     <button data-view="relatorios">Relatórios</button>
   </nav>
 
@@ -310,12 +309,11 @@
           <svg id="eye-icon-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.68M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
         </button>
       </div>
-      <div class="grid grid-5" style="margin-bottom:22px;">
+      <div class="grid grid-4" style="margin-bottom:22px;">
         <div class="stat-card"><div class="label">Vendas hoje</div><div class="value-wrap"><div class="value brass mono" id="stat-today-total">R$ 0,00</div><span class="value-hidden-text brass mono">••••••</span></div></div>
         <div class="stat-card"><div class="label">Nº de vendas</div><div class="value-wrap"><div class="value mono" id="stat-today-count">0</div><span class="value-hidden-text mono">••</span></div></div>
         <div class="stat-card"><div class="label">Vendas no mês</div><div class="value-wrap"><div class="value mono" id="stat-month-total">R$ 0,00</div><span class="value-hidden-text mono">••••••</span></div></div>
         <div class="stat-card"><div class="label">Itens em falta</div><div class="value-wrap"><div class="value stamp mono" id="stat-low-count">0</div><span class="value-hidden-text stamp mono">••</span></div></div>
-        <div class="stat-card"><div class="label">Itens em pré-venda</div><div class="value-wrap"><div class="value mono presale-qty" id="stat-presale-count">0</div><span class="value-hidden-text mono">••</span></div></div>
       </div>
       <div class="grid grid-2">
         <div class="panel">
@@ -358,16 +356,6 @@
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin:0 0 14px;">
             <span style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim);">Total a pagar</span>
             <span style="font-family:'IBM Plex Mono'; font-size:28px; color:var(--brass); font-weight:600;" id="cart-total">R$ 0,00</span>
-          </div>
-
-          <div id="presale-contact-box" style="display:none; margin:0 0 16px; padding:12px 14px; border:1px dashed var(--brass-dim); border-radius:8px; background:var(--panel-alt);">
-            <div style="font-size:12px; color:var(--ink-2); margin-bottom:10px; line-height:1.4;">
-              Esta venda tem item(ns) em <strong>pré-venda</strong>. Informe o nome e telefone do cliente para avisá-lo quando o produto chegar:
-            </div>
-            <div class="row-flex">
-              <div class="field"><label>Nome do cliente</label><input type="text" id="presale-customer-name" placeholder="Nome completo"></div>
-              <div class="field"><label>Telefone</label><input type="text" id="presale-customer-phone" placeholder="(00) 00000-0000"></div>
-            </div>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -423,7 +411,7 @@
             <th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th>
             <th>Estoque inicial</th><th>Entradas</th><th>Saídas</th>
             <th>Vendas totais</th><th>Vendido</th><th>Estoque atual</th><th>Confere</th>
-            <th>Pré-venda</th><th></th>
+            <th></th>
           </tr></thead>
           <tbody id="products-table"></tbody>
         </table>
@@ -465,26 +453,6 @@
         <table>
           <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd.</th><th>Motivo</th><th>Usuário</th></tr></thead>
           <tbody id="movements-table"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ---------- PRÉ-VENDAS ---------- -->
-    <section class="view" id="view-presales">
-      <div class="panel">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
-          <h2 style="margin:0;">Pré-vendas <span class="count" id="presales-count"></span></h2>
-        </div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;">
-          Vendas de produtos sem estoque no momento, a serem produzidos/entregues depois. Enquanto pendente,
-          o item fica na coluna <strong>Pré-venda</strong> do Estoque (sem afetar o saldo físico).
-          Quando o produto estiver pronto, registre a entrada normalmente em
-          <strong>Movimentações</strong> e depois marque a pré-venda como entregue aqui — isso remove o item
-          da coluna Pré-venda e baixa automaticamente o estoque.
-        </div>
-        <table>
-          <thead><tr><th>Data</th><th>Itens em pré-venda</th><th>Cliente</th><th>Telefone</th><th>Vendedor</th><th>Total</th><th>Status</th><th></th></tr></thead>
-          <tbody id="presales-table"></tbody>
         </table>
       </div>
     </section>
@@ -793,7 +761,6 @@ function attachListeners(){
     renderDashboard();
     renderRecentSales();
     renderTodaySales();
-    renderPresales();
   });
   unsubMov = db.collection('movements').orderBy('date','desc').limit(500).onSnapshot(snap=>{
     movements = snap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -806,11 +773,10 @@ function renderProducts(){
   const tbody = document.getElementById('products-table');
   document.getElementById('prod-count').textContent = `(${products.length})`;
   if(products.length===0){
-    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><div class="glyph">📦</div>Nenhum produto cadastrado ainda</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state"><div class="glyph">📦</div>Nenhum produto cadastrado ainda</div></td></tr>`;
     return;
   }
   tbody.innerHTML = products.map(p=>{
-    const pre = p.presaleQty||0;
     const hasBaseline = p.initialStock!==null && p.initialStock!==undefined;
     const entradas = p.totalEntradas||0;
     const saidas = p.totalSaidas||0;
@@ -836,7 +802,6 @@ function renderProducts(){
       <td class="mono">${vendido}</td>
       <td class="mono ${p.stock<=p.minStock ? 'low-stock':''}">${p.stock}</td>
       <td class="mono">${conferHtml}</td>
-      <td class="mono ${pre>0?'presale-qty':''}">${pre>0?pre:'—'}</td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.id}')">Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="deleteProduct('${p.id}')">Excluir</button>
@@ -934,7 +899,7 @@ async function deleteProduct(id){
 }
 
 function fillMovProductSelect(){
-  const opts = products.map(p=>`<option value="${p.id}">${p.name}${p.category?' - '+p.category:''} (${p.stock} em estoque${p.presaleQty?', '+p.presaleQty+' em pré-venda':''})</option>`).join('');
+  const opts = products.map(p=>`<option value="${p.id}">${p.name}${p.category?' - '+p.category:''} (${p.stock} em estoque)</option>`).join('');
   const s2 = document.getElementById('mov-product-select');
   const keep2 = s2.value;
   s2.innerHTML = opts || `<option value="">Cadastre um produto primeiro</option>`;
@@ -1038,18 +1003,24 @@ document.getElementById('product-search').addEventListener('input', e=>{
 function renderProductGrid(){
   const grid = document.getElementById('product-grid');
   const term = productSearchTerm.trim().toLowerCase();
-  let list = products.filter(p=> !term || p.name.toLowerCase().includes(term) || (p.category||'').toLowerCase().includes(term));
+  // Só aparecem na venda os produtos com estoque. Ao registrar uma entrada (reposição)
+  // em Movimentações, o produto volta a aparecer automaticamente.
+  const emEstoque = products.filter(p=> (p.stock||0) > 0);
+  let list = emEstoque.filter(p=> !term || p.name.toLowerCase().includes(term) || (p.category||'').toLowerCase().includes(term));
   list = [...list].sort((a,b)=> a.name.localeCompare(b.name,'pt-BR') || (a.category||'').localeCompare(b.category||'','pt-BR'));
   if(list.length===0){
-    grid.innerHTML = `<div class="empty-state product-empty"><div class="glyph">📦</div>${products.length===0 ? 'Nenhum produto cadastrado ainda' : 'Nenhum produto encontrado'}</div></div>`;
+    const semEstoque = products.length - emEstoque.length;
+    const msg = products.length===0 ? 'Nenhum produto cadastrado ainda'
+      : emEstoque.length===0 ? 'Nenhum produto com estoque. Registre uma entrada em Movimentações para liberar a venda.'
+      : 'Nenhum produto encontrado' + (semEstoque>0 ? ' com estoque' : '');
+    grid.innerHTML = `<div class="empty-state product-empty"><div class="glyph">📦</div>${msg}</div></div>`;
     return;
   }
   grid.innerHTML = list.map(p=>{
-    const out = p.stock<=0;
     return `
-    <button type="button" class="product-card ${out?'presale':''}" onclick="addProductToCart('${p.id}')">
+    <button type="button" class="product-card" onclick="addProductToCart('${p.id}')">
       <div class="pname">${p.name}</div>
-      <div class="pmeta"><span>${p.category||'—'}</span><span>${out?'pré-venda':'saldo '+p.stock}</span></div>
+      <div class="pmeta"><span>${p.category||'—'}</span><span>saldo ${p.stock}</span></div>
       <div class="pprice">${fmtBRL(p.salePrice)}</div>
     </button>`;
   }).join('');
@@ -1058,14 +1029,11 @@ function renderProductGrid(){
 function addProductToCart(pid){
   const p = products.find(x=>x.id===pid);
   if(!p) return;
-  const isPresale = p.stock<=0;
+  if((p.stock||0) <= 0){ showToast(`"${p.name}" está sem estoque.`); return; }
   const existing = cart.find(c=>c.productId===pid);
-  if(!isPresale){
-    const currentQty = existing ? existing.qty : 0;
-    if(currentQty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
-  }
-  if(existing){ existing.qty += 1; } else { cart.push({productId:pid, name:p.name, category:p.category||'', unitPrice:p.salePrice, qty:1, presale:isPresale}); }
-  if(isPresale) showToast(`"${p.name}" está sem estoque — adicionado como pré-venda.`);
+  const currentQty = existing ? existing.qty : 0;
+  if(currentQty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
+  if(existing){ existing.qty += 1; } else { cart.push({productId:pid, name:p.name, category:p.category||'', unitPrice:p.salePrice, qty:1}); }
   renderCart();
 }
 
@@ -1076,7 +1044,7 @@ function renderCart(){
   } else {
     el.innerHTML = cart.map((c,i)=>`
       <div class="cart-item">
-        <div class="name">${c.name}${c.presale?' <span class="tag tag-presale" style="font-size:9.5px; padding:1px 6px; vertical-align:middle;">pré-venda</span>':''}<br><span class="mono" style="color:var(--text-dim); font-size:11.5px;">${c.category?c.category+' · ':''}${fmtBRL(c.unitPrice)} un.</span></div>
+        <div class="name">${c.name}<br><span class="mono" style="color:var(--text-dim); font-size:11.5px;">${c.category?c.category+' · ':''}${fmtBRL(c.unitPrice)} un.</span></div>
         <div class="qty-ctl">
           <button onclick="changeCartQty(${i},-1)">−</button>
           <span class="mono">${c.qty}</span>
@@ -1088,14 +1056,13 @@ function renderCart(){
   }
   document.getElementById('cart-subtotal').textContent = fmtBRL(cartTotal());
   document.getElementById('cart-total').textContent = fmtBRL(cartFinalTotal());
-  document.getElementById('presale-contact-box').style.display = cart.some(c=>c.presale) ? 'block' : 'none';
   if(paymentRows.length===1){ paymentRows[0].amount = round2(cartFinalTotal()); }
   renderPaymentRows();
 }
 function changeCartQty(i, delta){
   const c = cart[i];
   const p = products.find(x=>x.id===c.productId);
-  if(delta>0 && !c.presale && p && c.qty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
+  if(delta>0 && p && c.qty+1 > p.stock){ showToast(`Estoque insuficiente (${p.stock} disponível).`); return; }
   c.qty += delta;
   if(c.qty<=0) cart.splice(i,1);
   renderCart();
@@ -1108,8 +1075,6 @@ document.getElementById('btn-clear-cart').addEventListener('click', ()=>{
   paymentRows = [{method:'Pix', amount:0}];
   const cashEl = document.getElementById('cash-received'); if(cashEl) cashEl.value='';
   document.getElementById('cart-discount').value = '';
-  document.getElementById('presale-customer-name').value='';
-  document.getElementById('presale-customer-phone').value='';
   document.getElementById('receipt-holder').innerHTML = '';
   renderCart();
 });
@@ -1209,26 +1174,21 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     changeGiven = round2(cashReceived - cashRow.amount);
   }
 
-  const hasPresale = cart.some(c=>c.presale);
-  let customerName = '', customerPhone = '';
-  if(hasPresale){
-    customerName = document.getElementById('presale-customer-name').value.trim();
-    customerPhone = document.getElementById('presale-customer-phone').value.trim();
-    if(!customerName || !customerPhone){ showToast('Informe nome e telefone do cliente para o item em pré-venda.'); return; }
+  // Confere o estoque de novo na hora de fechar (pode ter mudado desde que o item foi pro carrinho)
+  for(const c of cart){
+    const p = products.find(x=>x.id===c.productId);
+    if(!p){ showToast(`"${c.name}" não está mais no catálogo. Remova do carrinho.`); return; }
+    if(c.qty > (p.stock||0)){ showToast(`Estoque insuficiente de "${c.name}" (${p.stock||0} disponível). Ajuste o carrinho.`); return; }
   }
   const saleData = {
     date: firebase.firestore.FieldValue.serverTimestamp(),
-    items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:round2(c.unitPrice*c.qty), presale: !!c.presale})),
+    items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:round2(c.unitPrice*c.qty)})),
     subtotal: round2(cartTotal()),
     discount,
     total,
     payments: paymentsClean,
     cashReceived, changeGiven,
-    seller: emailParaUsuario(currentUser.email),
-    hasPresale,
-    presaleStatus: hasPresale ? 'pendente' : null,
-    customerName: hasPresale ? customerName : null,
-    customerPhone: hasPresale ? customerPhone : null
+    seller: emailParaUsuario(currentUser.email)
   };
   try{
     const batch = db.batch();
@@ -1238,15 +1198,6 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     cart.forEach(c=>{
       const p = products.find(x=>x.id===c.productId);
       const ref = db.collection('products').doc(c.productId);
-      if(c.presale){
-        // pré-venda: não desconta do estoque físico, apenas entra na coluna "pré-venda"
-        batch.update(ref, {presaleQty: (p.presaleQty||0) + c.qty});
-        batch.set(db.collection('movements').doc(), {
-          date: firebase.firestore.FieldValue.serverTimestamp(),
-          productId: c.productId, productName: c.name, type:'saida', category:'presale', label:'Pré-venda',
-          qty: c.qty, reason:'Venda registrada como pré-venda', user: seller, saleId: saleRef.id
-        });
-      } else {
         batch.update(ref, {
           stock: (p.stock - c.qty),
           totalSold: firebase.firestore.FieldValue.increment(c.qty),
@@ -1257,7 +1208,6 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
           productId: c.productId, productName: c.name, type:'saida', category:'venda', label:'Venda',
           qty: c.qty, reason:'Venda', user: seller, saleId: saleRef.id
         });
-      }
     });
     await batch.commit();
     showReceipt(saleData);
@@ -1265,10 +1215,8 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     paymentRows = [{method:'Pix', amount:0}];
     document.getElementById('cash-received').value='';
     document.getElementById('cart-discount').value='';
-    document.getElementById('presale-customer-name').value='';
-    document.getElementById('presale-customer-phone').value='';
     renderCart();
-    showToast(hasPresale ? 'Venda registrada (com item em pré-venda).' : 'Venda registrada.');
+    showToast('Venda registrada.');
   } catch(err){
     console.error(err);
     showToast('Erro ao registrar a venda.');
@@ -1329,76 +1277,6 @@ function renderTodaySales(){
       <td><button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button></td>
     </tr>`;
   }).join('');
-}
-
-/* ---------------------------- pré-vendas ------------------------------- */
-function renderPresales(){
-  const tbody = document.getElementById('presales-table');
-  const list = sales.filter(s=>s.hasPresale && !s.cancelled)
-    .sort((a,b)=> (b.date?.toMillis?.()||0) - (a.date?.toMillis?.()||0));
-  const pending = list.filter(s=>s.presaleStatus!=='entregue');
-  document.getElementById('presales-count').textContent = `(${pending.length} pendente${pending.length===1?'':'s'})`;
-
-  if(list.length===0){
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="glyph">🔧</div>Nenhuma pré-venda registrada</div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = list.map(s=>{
-    const presaleItems = s.items.filter(i=>i.presale);
-    const done = s.presaleStatus==='entregue';
-    return `
-    <tr>
-      <td class="mono">${fmtDate(s.date)}</td>
-      <td>${itemsSummary(presaleItems)}</td>
-      <td>${s.customerName || '<span style="color:var(--text-dim);">—</span>'}</td>
-      <td class="mono">${s.customerPhone || '<span style="color:var(--text-dim);">—</span>'}</td>
-      <td>${s.seller}</td>
-      <td class="mono">${fmtBRL(s.total)}</td>
-      <td>${done ? '<span class="tag" style="background:#2b6b57;color:#c9f2e4;">Entregue</span>' : '<span class="tag tag-presale">Pendente</span>'}</td>
-      <td>${done
-        ? `<button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button>`
-        : `<button class="link-btn" onclick="markPresaleFulfilled('${s.id}')">marcar como entregue</button> · <button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes / cancelar</button>`
-      }</td>
-    </tr>`;
-  }).join('');
-}
-
-async function markPresaleFulfilled(saleId){
-  const s = sales.find(x=>x.id===saleId);
-  if(!s) return;
-  const presaleItems = s.items.filter(i=>i.presale);
-  if(!confirm('Marcar esta pré-venda como entregue? O(s) item(ns) sairá(ão) da coluna "Pré-venda" e o estoque será baixado. Registre a entrada do produto em Movimentações antes de confirmar, se ainda não fez.')) return;
-  try{
-    const batch = db.batch();
-    const user = emailParaUsuario(currentUser.email);
-    let produtoFaltando = false;
-    presaleItems.forEach(it=>{
-      const p = products.find(pp=>pp.id===it.productId);
-      const ref = db.collection('products').doc(it.productId);
-      if(!p){
-        produtoFaltando = true;
-      } else {
-        const novoPresale = Math.max((p.presaleQty||0) - it.qty, 0);
-        const novoEstoque = Math.max(p.stock - it.qty, 0);
-        batch.update(ref, {presaleQty: novoPresale, stock: novoEstoque, totalSold: firebase.firestore.FieldValue.increment(it.qty), totalSoldGross: firebase.firestore.FieldValue.increment(it.qty)});
-      }
-      batch.set(db.collection('movements').doc(), {
-        date: firebase.firestore.FieldValue.serverTimestamp(),
-        productId: it.productId, productName: it.name, type:'saida', category:'baixa_presale', label:'Baixa por pré-venda',
-        qty: it.qty, reason: p ? 'Entrega de pré-venda' : 'Entrega de pré-venda (produto excluído do catálogo, estoque não pôde ser ajustado)', user, saleId
-      });
-    });
-    batch.update(db.collection('sales').doc(saleId), {
-      presaleStatus: 'entregue',
-      presaleFulfilledAt: firebase.firestore.FieldValue.serverTimestamp(),
-      presaleFulfilledBy: user
-    });
-    await batch.commit();
-    showToast(produtoFaltando ? 'Pré-venda marcada como entregue. Obs: produto já excluído do catálogo, estoque não pôde ser ajustado.' : 'Pré-venda marcada como entregue. Estoque baixado.');
-  }catch(err){
-    console.error(err);
-    showToast('Erro ao atualizar a pré-venda.');
-  }
 }
 
 /* --------------------------- movimentações ------------------------------- */
@@ -1492,11 +1370,11 @@ function openExchangeModal(idx){
   document.getElementById('exchange-current-desc').textContent = `${item.qty}× ${item.name}${item.category?' - '+item.category:''} (${fmtBRL(item.unitPrice)} un.)`;
   const select = document.getElementById('exchange-new-product');
   const options = [...products]
-    .filter(p=>p.id!==item.productId)
+    .filter(p=>p.id!==item.productId && (p.stock||0) > 0)
     .sort((a,b)=> a.name.localeCompare(b.name,'pt-BR') || (a.category||'').localeCompare(b.category||'','pt-BR'));
   select.innerHTML = options.length
     ? options.map(p=>`<option value="${p.id}">${p.name}${p.category?' - '+p.category:''} (saldo ${p.stock})</option>`).join('')
-    : `<option value="">Nenhum outro produto cadastrado</option>`;
+    : `<option value="">Nenhum outro produto com estoque</option>`;
   openModal('modal-exchange');
 }
 
@@ -1912,8 +1790,6 @@ function renderDashboard(){
   const low = products.filter(p=>p.stock<=p.minStock);
   document.getElementById('stat-low-count').textContent = low.length;
 
-  const totalPresale = products.reduce((s,p)=> s + (p.presaleQty||0), 0);
-  document.getElementById('stat-presale-count').textContent = totalPresale;
 
   const byPay = {};
   todaySales.forEach(s=> salePayments(s).forEach(p=>{ byPay[p.method] = (byPay[p.method]||0) + p.amount; }));
