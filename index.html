@@ -481,7 +481,7 @@
             </select>
           </div>
           <button class="btn btn-brass" id="btn-run-report">Gerar</button>
-          <button class="btn btn-ghost btn-sm" id="btn-report-1819" title="Preenche o período 18/10 a 19/10 e gera o relatório">Conferir 18 e 19/10</button>
+          <button class="btn btn-ghost btn-sm" id="btn-report-1819" title="Preenche o período com o dia 18/10 e gera o relatório">Conferir 18/10</button>
         </div>
       </div>
       <div class="grid grid-4" style="margin-bottom:20px;">
@@ -493,25 +493,25 @@
       <div class="panel">
         <h2>Vendas por produto no período <span class="count" id="report-by-product-count"></span></h2>
         <div style="font-size:12px; color:var(--text-dim); margin:-6px 0 10px;">
-          <b>Faturamento bruto</b> = quantidade × preço de tabela (devocionário a R$ 35,00). <b>Desconto</b> = tudo o que saiu abaixo do preço de tabela (desconto digitado no caixa, rateado entre os itens da venda, + preço promocional).
-          <b>Faturamento c/ desconto</b> = o que de fato entrou. Nos devocionários, <b>Pela regra</b> é o valor correto (1 un. R$ 35,00; 2 ou mais R$ 32,50 cada) e <b>Diferença</b> mostra quanto foi cobrado a mais (+) ou a menos (−).
+          <b>Faturamento bruto</b> = quantidade × preço de tabela (devocionário a R$ 35,00). <b>Desconto</b> = tudo o que saiu abaixo do preço de tabela (desconto digitado no caixa + preço promocional).
+          <b>Faturamento c/ desconto</b> = o que de fato entrou. Como os demais produtos foram registrados sem desconto, o desconto de vendas com devocionário fica todo nos devocionários.
         </div>
         <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Produto</th><th>Cor / categoria</th><th>Quantidade</th><th>Faturamento bruto</th><th>Desconto</th><th>Faturamento c/ desconto</th><th>Pela regra</th><th>Diferença</th></tr></thead>
+          <thead><tr><th>Produto</th><th>Cor / categoria</th><th>Quantidade</th><th>Faturamento bruto</th><th>Desconto</th><th>Faturamento c/ desconto</th></tr></thead>
           <tbody id="report-by-product"></tbody>
           <tfoot id="report-by-product-foot"></tfoot>
         </table>
         </div>
       </div>
-      <div class="panel" id="devoc-audit-panel">
+      <div class="panel" id="devoc-audit-panel" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <h2 style="margin:0;">Conferência dos devocionários <span class="count" id="devoc-audit-count"></span></h2>
+          <h2 style="margin:0;">Conferência dos devocionários · 18/10 <span class="count" id="devoc-audit-count"></span></h2>
           <button class="btn btn-ghost btn-sm" id="btn-devoc-csv" disabled>Exportar conferência (.csv)</button>
         </div>
         <div style="font-size:12px; color:var(--text-dim); margin:6px 0 12px;">
-          Recalcula cada venda do período que teve devocionário pela regra (1 un. R$ 35,00; 2 ou mais R$ 32,50 cada, somando as cores). Os outros produtos da venda entram pelo preço registrado.
-          Considera todas as formas de pagamento e ignora vendas canceladas. Para acertar uma venda, clique em <b>detalhes</b> e use a correção de total.
+          Recalcula cada venda do dia 18/10 que teve devocionário pela regra daquele dia: R$ 35,00 cada, com R$ 5,00 de desconto a cada par (1 = R$ 35,00 · 2 = R$ 65,00 · 3 = R$ 100,00 · 4 = R$ 130,00), somando as cores.
+          Os outros produtos da venda entram pelo preço registrado, então toda a diferença é dos devocionários. Considera todas as formas de pagamento e ignora vendas canceladas. Para acertar uma venda, clique em <b>detalhes</b> e use a correção de total.
         </div>
         <div class="grid grid-4" style="margin-bottom:14px;">
           <div class="stat-card"><div class="label">Cobrado</div><div class="value mono" id="devoc-charged">R$ 0,00</div></div>
@@ -532,7 +532,7 @@
       <div class="panel">
         <h2>Vendas no período</h2>
         <table>
-          <thead><tr><th>Data</th><th>Itens</th><th>Forma</th><th>Vendedor</th><th>Bruto</th><th>Desconto</th><th>Total</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Itens</th><th>Forma</th><th>Vendedor</th><th>Total</th><th></th></tr></thead>
           <tbody id="report-table"></tbody>
         </table>
       </div>
@@ -1033,6 +1033,21 @@ function isDevocionario(nome){
   return String(nome||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes('devocion');
 }
 function devocPrecoUnit(qtdTotal){ return qtdTotal >= DEVOC_QTD_MIN ? DEVOC_PRECO_2MAIS : DEVOC_PRECO_1; }
+
+/* Regra do dia 18/10/2026 (lançamento): R$ 35,00 cada, com R$ 5,00 de desconto a cada PAR.
+   1 = 35,00 · 2 = 65,00 · 3 = 100,00 · 4 = 130,00 ...
+   A partir de 19/10/2026 vale a regra de cima (2 ou mais = R$ 32,50 cada). */
+const DEVOC_DIA_REGRA_ANTIGA = '2026-10-18';
+const DEVOC_INICIO_REGRA_NOVA = '2026-10-19';
+function saleDateKey(s){
+  if(!s || !s.date) return '';
+  const d = s.date.toDate ? s.date.toDate() : new Date(s.date);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function devocTotalPelaRegra(n, dateKey){
+  if(dateKey && dateKey < DEVOC_INICIO_REGRA_NOVA) return round2(n*DEVOC_PRECO_1 - 5*Math.floor(n/2));
+  return round2(n*devocPrecoUnit(n));
+}
 function devocQtdCarrinho(){ return cart.filter(c=>isDevocionario(c.name)).reduce((s,c)=>s+c.qty,0); }
 /* Recalcula o preço de todos os devocionários do carrinho conforme a quantidade total. */
 function applyDevocPricing(){
@@ -1940,9 +1955,8 @@ document.getElementById('btn-backup').addEventListener('click', async ()=>{
 /* ------------------------------- relatórios -------------------------------- */
 document.getElementById('btn-run-report').addEventListener('click', runReport);
 document.getElementById('btn-report-1819').addEventListener('click', ()=>{
-  const y = new Date().getMonth() >= 9 ? new Date().getFullYear() : new Date().getFullYear()-1; // outubro mais recente
-  document.getElementById('rep-from').value = `${y}-10-18`;
-  document.getElementById('rep-to').value = `${y}-10-19`;
+  document.getElementById('rep-from').value = DEVOC_DIA_REGRA_ANTIGA;
+  document.getElementById('rep-to').value = DEVOC_DIA_REGRA_ANTIGA;
   document.getElementById('rep-pay').value = '';
   runReport();
 });
@@ -1954,11 +1968,23 @@ function itemListUnit(it){
   if(isDevocionario(it.name)) return DEVOC_PRECO_1;
   return (it.listUnitPrice!=null ? it.listUnitPrice : it.unitPrice) || 0;
 }
-/* Fator que transforma o subtotal registrado de cada item no valor efetivamente pago
-   (rateia o desconto digitado no caixa e eventuais correções de total). */
-function saleNetFactor(s){
-  const sum = (s.items||[]).reduce((a,i)=>a+(i.subtotal||0),0);
-  return sum>0 ? (s.total||0)/sum : 0;
+/* Valor efetivamente pago por item. Os demais produtos foram registrados corretamente,
+   então, quando a venda tem devocionário, todo o desconto (ou acréscimo) da venda é
+   atribuído só aos devocionários. Sem devocionário, rateia proporcionalmente. */
+function saleItemNets(s){
+  const items = s.items||[];
+  const total = s.total||0;
+  const devSub = items.filter(i=>isDevocionario(i.name)).reduce((a,i)=>a+(i.subtotal||0),0);
+  const outSub = items.filter(i=>!isDevocionario(i.name)).reduce((a,i)=>a+(i.subtotal||0),0);
+  const devQty = items.filter(i=>isDevocionario(i.name)).reduce((a,i)=>a+i.qty,0);
+  if(devQty>0){
+    const devNet = total - outSub;
+    return items.map(i=> isDevocionario(i.name)
+      ? (devSub>0 ? devNet*(i.subtotal||0)/devSub : devNet*i.qty/devQty)
+      : (i.subtotal||0));
+  }
+  const sum = devSub + outSub;
+  return items.map(i=> sum>0 ? (i.subtotal||0)*total/sum : 0);
 }
 /* Recalcula uma venda pela regra do devocionário. Retorna null se não tem devocionário. */
 function auditSaleDevoc(s){
@@ -1966,7 +1992,7 @@ function auditSaleDevoc(s){
   const n = items.filter(i=>isDevocionario(i.name)).reduce((a,i)=>a+i.qty,0);
   if(n===0) return null;
   const outros = items.filter(i=>!isDevocionario(i.name)).reduce((a,i)=>a+(i.subtotal||0),0);
-  const correto = round2(outros + n*devocPrecoUnit(n));
+  const correto = round2(outros + devocTotalPelaRegra(n, saleDateKey(s)));
   const cobrado = round2(s.total||0);
   return {sale:s, n, correto, cobrado, diff: round2(cobrado-correto)};
 }
@@ -1990,7 +2016,7 @@ function renderDevocAudit(){
   document.getElementById('btn-devoc-csv').disabled = devocAuditRows.length===0;
   const tb = document.getElementById('devoc-audit-table');
   tb.innerHTML = rows.length===0
-    ? `<tr><td colspan="9"><div class="empty-state"><div class="glyph">✓</div>${devocAuditRows.length ? 'Nenhuma diferença encontrada' : 'Nenhuma venda de devocionário no período'}</div></td></tr>`
+    ? `<tr><td colspan="9"><div class="empty-state"><div class="glyph">✓</div>${devocAuditRows.length ? 'Nenhuma diferença encontrada' : 'Nenhuma venda de devocionário em 18/10'}</div></td></tr>`
     : rows.map(r=>{
         const ok = Math.abs(r.diff)<0.01;
         const diffHtml = ok ? '<span style="color:var(--green-ok); font-weight:600;">✓ ok</span>'
@@ -2021,7 +2047,7 @@ function exportDevocCsv(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `conferencia-devocionarios-${document.getElementById('rep-from').value||'inicio'}_a_${document.getElementById('rep-to').value||'hoje'}.csv`;
+  a.download = `conferencia-devocionarios-${DEVOC_DIA_REGRA_ANTIGA}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
@@ -2041,7 +2067,9 @@ async function runReport(){
     const snap = await query.get();
     let filtered = snap.docs.map(d=>({id:d.id, ...d.data()}));
     // Conferência dos devocionários: usa todas as vendas do período (independe do filtro de pagamento).
-    devocAuditRows = filtered.filter(s=>!s.cancelled).map(auditSaleDevoc).filter(Boolean)
+    const cobre18 = (!from || from <= DEVOC_DIA_REGRA_ANTIGA) && (!to || to >= DEVOC_DIA_REGRA_ANTIGA);
+    document.getElementById('devoc-audit-panel').style.display = cobre18 ? '' : 'none';
+    devocAuditRows = filtered.filter(s=>!s.cancelled && saleDateKey(s)===DEVOC_DIA_REGRA_ANTIGA).map(auditSaleDevoc).filter(Boolean)
       .sort((a,b)=> (a.sale.date?.toMillis?.()||0) - (b.sale.date?.toMillis?.()||0));
     renderDevocAudit();
     if(payFilter) filtered = filtered.filter(s=> salePayments(s).some(p=>p.method===payFilter));
@@ -2080,30 +2108,24 @@ async function runReport(){
     activeSales.forEach(s=>{
       const share = payFilter ? (s.total>0 ? saleRevenueForFilter(s)/s.total : 0) : 1;
       if(share<=0) return;
-      const factor = saleNetFactor(s);
-      const nDevoc = (s.items||[]).filter(i=>isDevocionario(i.name)).reduce((a,i)=>a+i.qty,0);
-      (s.items||[]).forEach(it=>{
+      const nets = saleItemNets(s);
+      (s.items||[]).forEach((it,idx)=>{
         const key = it.productId || (it.name+'|'+(it.category||''));
         const devoc = isDevocionario(it.name);
-        if(!byProduct[key]) byProduct[key] = {name: it.name, category: it.category||'—', qty:0, gross:0, net:0, rule:0, devoc};
+        if(!byProduct[key]) byProduct[key] = {name: it.name, category: it.category||'—', qty:0, gross:0, net:0, devoc};
         const r = byProduct[key];
         r.qty += it.qty*share;
         r.gross += it.qty*itemListUnit(it)*share;
-        r.net += (it.subtotal||0)*factor*share;
-        if(devoc) r.rule += it.qty*devocPrecoUnit(nDevoc)*share;
+        r.net += nets[idx]*share;
       });
     });
     const productRows = Object.values(byProduct).sort((a,b)=> b.qty-a.qty);
     document.getElementById('report-by-product-count').textContent = productRows.length ? `(${productRows.length} itens)` : '';
     const byProdEl = document.getElementById('report-by-product');
     byProdEl.innerHTML = productRows.length===0
-      ? `<tr><td colspan="4"><div class="empty-state"><div class="glyph">📦</div>Nenhuma venda no período selecionado</div></td></tr>`
+      ? `<tr><td colspan="6"><div class="empty-state"><div class="glyph">📦</div>Nenhuma venda no período selecionado</div></td></tr>`
       : productRows.map(r=>{
         const disc = round2(r.gross - r.net);
-        const diff = round2(r.net - r.rule);
-        const diffHtml = !r.devoc ? '<span style="color:var(--text-dim);">—</span>'
-          : Math.abs(diff)<0.01 ? '<span style="color:var(--green-ok); font-weight:600;">✓</span>'
-          : `<span class="low-stock">${diff>0?'+':''}${fmtBRL(diff)}</span>`;
         return `
         <tr>
           <td>${r.name}</td>
@@ -2112,12 +2134,10 @@ async function runReport(){
           <td class="mono">${fmtBRL(r.gross)}</td>
           <td class="mono">${Math.abs(disc)<0.01 ? '—' : (disc>0?'−':'+')+fmtBRL(Math.abs(disc))}</td>
           <td class="mono" style="font-weight:600;">${fmtBRL(r.net)}</td>
-          <td class="mono">${r.devoc ? fmtBRL(r.rule) : '<span style="color:var(--text-dim);">—</span>'}</td>
-          <td class="mono">${diffHtml}</td>
         </tr>`;}).join('');
     const tot = productRows.reduce((a,r)=>({qty:a.qty+r.qty, gross:a.gross+r.gross, net:a.net+r.net}), {qty:0,gross:0,net:0});
     const devRows = productRows.filter(r=>r.devoc);
-    const dev = devRows.reduce((a,r)=>({qty:a.qty+r.qty, gross:a.gross+r.gross, net:a.net+r.net, rule:a.rule+r.rule}), {qty:0,gross:0,net:0,rule:0});
+    const dev = devRows.reduce((a,r)=>({qty:a.qty+r.qty, gross:a.gross+r.gross, net:a.net+r.net}), {qty:0,gross:0,net:0});
     const fq = q => Number.isInteger(q) ? q : q.toFixed(2);
     const fd = d => Math.abs(d)<0.01 ? '—' : (d>0?'−':'+')+fmtBRL(Math.abs(d));
     const footStyle = 'style="font-weight:600; border-top:2px solid var(--border);"';
@@ -2125,26 +2145,23 @@ async function runReport(){
       ${devRows.length ? `<tr ${footStyle}>
         <td colspan="2">Subtotal devocionários</td><td class="mono">${fq(dev.qty)}</td>
         <td class="mono">${fmtBRL(dev.gross)}</td><td class="mono">${fd(round2(dev.gross-dev.net))}</td>
-        <td class="mono">${fmtBRL(dev.net)}</td><td class="mono">${fmtBRL(dev.rule)}</td>
-        <td class="mono">${Math.abs(round2(dev.net-dev.rule))<0.01 ? '<span style="color:var(--green-ok);">✓</span>' : `<span class="low-stock">${dev.net-dev.rule>0?'+':''}${fmtBRL(round2(dev.net-dev.rule))}</span>`}</td>
+        <td class="mono">${fmtBRL(dev.net)}</td>
       </tr>` : ''}
       <tr ${footStyle}>
         <td colspan="2">Total geral</td><td class="mono">${fq(tot.qty)}</td>
         <td class="mono">${fmtBRL(tot.gross)}</td><td class="mono">${fd(round2(tot.gross-tot.net))}</td>
-        <td class="mono">${fmtBRL(tot.net)}</td><td></td><td></td>
+        <td class="mono">${fmtBRL(tot.net)}</td>
       </tr>`;
 
     const tbody = document.getElementById('report-table');
     tbody.innerHTML = filtered.length===0
-      ? `<tr><td colspan="8"><div class="empty-state"><div class="glyph">📊</div>Nenhuma venda no período selecionado</div></td></tr>`
+      ? `<tr><td colspan="6"><div class="empty-state"><div class="glyph">📊</div>Nenhuma venda no período selecionado</div></td></tr>`
       : filtered.map(s=>`
         <tr class="${s.cancelled?'row-cancelled':''}">
           <td class="mono">${fmtDate(s.date)}</td>
           <td>${itemsSummary(s.items)}</td>
           <td>${s.cancelled ? '<span class="tag tag-cancelada">Cancelada</span>' : paymentsTagsHtml(s)}</td>
           <td>${s.seller}</td>
-          <td class="mono">${fmtBRL((s.items||[]).reduce((a,i)=>a+i.qty*itemListUnit(i),0))}</td>
-          <td class="mono">${(()=>{ const d = round2((s.items||[]).reduce((a,i)=>a+i.qty*itemListUnit(i),0) - (s.total||0)); return Math.abs(d)<0.01 ? '—' : (d>0?'−':'+')+fmtBRL(Math.abs(d)); })()}</td>
           <td class="mono">${fmtBRL(s.total)}</td>
           <td><button class="link-btn" onclick="openSaleModal('${s.id}')">detalhes</button></td>
         </tr>`).join('');
