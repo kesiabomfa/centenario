@@ -146,6 +146,21 @@
   .panel h2 .count{ font-family:'IBM Plex Mono'; font-size:13px; color:var(--text-dim); font-weight:400; }
 
   table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  /* coluna Estoque atual em destaque */
+  th.col-stock{ color:var(--brass-dim); background:#f6ecd2; text-align:center; }
+  td.col-stock{ background:#fbf3df; text-align:center; font-size:17px; font-weight:700; color:var(--ink); border-left:2px solid #e3cf9c; border-right:2px solid #e3cf9c; }
+  td.col-stock.low-stock{ color:var(--stamp); background:#fbe7e1; }
+  td.col-stock .min-hint{ display:block; font-size:10.5px; font-weight:500; color:var(--text-dim); }
+  /* reordenar colunas */
+  #products-thead th[draggable="true"]{ cursor:grab; user-select:none; }
+  #products-thead th.drag-over{ box-shadow: inset 3px 0 0 var(--brass); }
+  #products-thead th.dragging{ opacity:.4; }
+  .col-order-box{ display:none; margin:0 0 12px; padding:10px 12px; border:1px dashed var(--border); border-radius:10px; background:var(--panel-alt); }
+  .col-order-box.show{ display:block; }
+  .col-chip{ display:inline-flex; align-items:center; gap:4px; margin:3px 6px 3px 0; padding:4px 6px 4px 10px; border:1px solid var(--border); border-radius:999px; background:var(--panel); font-size:12.5px; }
+  .col-chip.stock{ border-color:#e3cf9c; background:#fbf3df; font-weight:600; }
+  .col-chip button{ border:none; background:transparent; cursor:pointer; font-size:14px; padding:0 4px; color:var(--ink-2); line-height:1; }
+  .col-chip button:disabled{ opacity:.25; cursor:default; }
   th{ text-align:left; padding:8px 10px; color:var(--text-dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); font-weight:600; }
   td{ padding:9px 10px; border-bottom:1px solid var(--border); }
   tr:hover td{ background:rgba(169,118,43,.05); }
@@ -404,16 +419,20 @@
         <div id="csv-import-status" style="font-size:12.5px; color:var(--text-dim); margin-bottom:12px;"></div>
         <div style="font-size:11.5px; color:var(--text-dim); margin-bottom:12px;">
           <strong>Confere</strong> mostra Inicial + Entradas − Saídas − Vendido comparado ao Estoque atual. ✓ quer dizer que bate. Um número em vermelho é a diferença — vale investigar.
-          "Vendas totais" conta toda venda já registrada desse produto (mesmo as que depois foram canceladas); "Vendido" já desconta cancelamentos e é o que entra na conta do estoque.
+          "Vendido" já desconta cancelamentos e é o que entra na conta do estoque.
+          Para mudar a ordem das colunas, arraste o título da coluna ou use <b>Organizar colunas</b>.
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin:-4px 0 8px;">
+          <button class="btn btn-ghost btn-sm" id="btn-col-order">Organizar colunas</button>
+        </div>
+        <div class="col-order-box" id="col-order-box">
+          <div style="font-size:11.5px; color:var(--text-dim); margin-bottom:6px;">Use ‹ e › para mover cada coluna para a esquerda ou para a direita. A ordem fica salva neste aparelho.</div>
+          <div id="col-order-chips"></div>
+          <button class="link-btn" id="btn-col-reset" style="margin-top:6px;">Voltar à ordem padrão</button>
         </div>
         <div style="overflow-x:auto;">
         <table>
-          <thead><tr>
-            <th>Produto</th><th>Cor / Variante</th><th>Custo</th><th>Venda</th>
-            <th>Estoque inicial</th><th>Entradas</th><th>Saídas</th>
-            <th>Vendas totais</th><th>Vendido</th><th>Estoque atual</th><th>Confere</th>
-            <th></th>
-          </tr></thead>
+          <thead id="products-thead"></thead>
           <tbody id="products-table"></tbody>
         </table>
         </div>
@@ -803,19 +822,97 @@ function attachListeners(){
 }
 
 /* ------------------------------ produtos --------------------------------- */
+/* Colunas da tabela de produtos (a de ações fica sempre no fim). A ordem pode ser
+   trocada arrastando o título ou pelo painel "Organizar colunas"; fica salva no aparelho. */
+const PRODUCT_COLUMNS = {
+  name:     {label:'Produto'},
+  category: {label:'Cor / Variante'},
+  stock:    {label:'Estoque atual', cls:'col-stock'},
+  cost:     {label:'Custo'},
+  price:    {label:'Venda'},
+  initial:  {label:'Estoque inicial'},
+  entradas: {label:'Entradas'},
+  saidas:   {label:'Saídas'},
+  vendido:  {label:'Vendido'},
+  confere:  {label:'Confere'}
+};
+const PRODUCT_COLUMNS_DEFAULT = ['name','category','stock','price','cost','initial','entradas','saidas','vendido','confere'];
+const COL_ORDER_KEY = 'centenario-product-col-order';
+let productColOrder = (()=>{
+  try{
+    const saved = JSON.parse(localStorage.getItem(COL_ORDER_KEY)||'null');
+    if(Array.isArray(saved)){
+      const valid = saved.filter(k=>PRODUCT_COLUMNS[k]);
+      PRODUCT_COLUMNS_DEFAULT.forEach(k=>{ if(!valid.includes(k)) valid.push(k); });
+      return valid;
+    }
+  }catch(e){}
+  return [...PRODUCT_COLUMNS_DEFAULT];
+})();
+function saveColOrder(){
+  try{ localStorage.setItem(COL_ORDER_KEY, JSON.stringify(productColOrder)); }catch(e){}
+  renderProducts();
+}
+function moveProductCol(key, delta){
+  const i = productColOrder.indexOf(key), j = i + delta;
+  if(i<0 || j<0 || j>=productColOrder.length) return;
+  [productColOrder[i], productColOrder[j]] = [productColOrder[j], productColOrder[i]];
+  saveColOrder();
+}
+document.getElementById('btn-col-order').addEventListener('click', ()=>{
+  const box = document.getElementById('col-order-box');
+  box.classList.toggle('show');
+  document.getElementById('btn-col-order').textContent = box.classList.contains('show') ? 'Fechar organização' : 'Organizar colunas';
+});
+document.getElementById('btn-col-reset').addEventListener('click', ()=>{
+  productColOrder = [...PRODUCT_COLUMNS_DEFAULT];
+  saveColOrder();
+});
+
+function renderProductsHeader(){
+  const thead = document.getElementById('products-thead');
+  thead.innerHTML = `<tr>${productColOrder.map(k=>
+    `<th draggable="true" data-col="${k}" class="${PRODUCT_COLUMNS[k].cls||''}" title="Arraste para mudar a ordem">${PRODUCT_COLUMNS[k].label}</th>`
+  ).join('')}<th></th></tr>`;
+  let dragKey = null;
+  thead.querySelectorAll('th[draggable="true"]').forEach(th=>{
+    th.addEventListener('dragstart', e=>{ dragKey = th.dataset.col; th.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', dragKey); }catch(_){} });
+    th.addEventListener('dragend', ()=>{ th.classList.remove('dragging'); thead.querySelectorAll('th').forEach(x=>x.classList.remove('drag-over')); });
+    th.addEventListener('dragover', e=>{ e.preventDefault(); th.classList.add('drag-over'); });
+    th.addEventListener('dragleave', ()=> th.classList.remove('drag-over'));
+    th.addEventListener('drop', e=>{
+      e.preventDefault();
+      const target = th.dataset.col;
+      if(!dragKey || dragKey===target) return;
+      const from = productColOrder.indexOf(dragKey);
+      productColOrder.splice(from,1);
+      productColOrder.splice(productColOrder.indexOf(target) + (from <= productColOrder.indexOf(target) ? 1 : 0), 0, dragKey);
+      saveColOrder();
+    });
+  });
+  document.getElementById('col-order-chips').innerHTML = productColOrder.map((k,i)=>`
+    <span class="col-chip ${k==='stock'?'stock':''}">
+      <button ${i===0?'disabled':''} onclick="moveProductCol('${k}',-1)" title="Mover para a esquerda">‹</button>
+      ${PRODUCT_COLUMNS[k].label}
+      <button ${i===productColOrder.length-1?'disabled':''} onclick="moveProductCol('${k}',1)" title="Mover para a direita">›</button>
+    </span>`).join('');
+}
+
 function renderProducts(){
+  renderProductsHeader();
   const tbody = document.getElementById('products-table');
   document.getElementById('prod-count').textContent = `(${products.length})`;
   if(products.length===0){
-    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state"><div class="glyph">📦</div>Nenhum produto cadastrado ainda</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${productColOrder.length+1}"><div class="empty-state"><div class="glyph">📦</div>Nenhum produto cadastrado ainda</div></td></tr>`;
     return;
   }
+  const dim = '<span style="color:var(--text-dim);">—</span>';
   tbody.innerHTML = products.map(p=>{
     const hasBaseline = p.initialStock!==null && p.initialStock!==undefined;
     const entradas = p.totalEntradas||0;
     const saidas = p.totalSaidas||0;
     const vendido = p.totalSold||0;
-    let conferHtml = '<span style="color:var(--text-dim);">—</span>';
+    let conferHtml = dim;
     if(hasBaseline){
       const esperado = p.initialStock + entradas - saidas - vendido;
       const diff = p.stock - esperado;
@@ -823,20 +920,23 @@ function renderProducts(){
         ? '<span style="color:var(--green-ok); font-weight:600;">✓</span>'
         : `<span class="low-stock" title="Estoque atual menos o esperado (Inicial+Entradas-Saídas-Vendido)">${diff>0?'+':''}${diff}</span>`;
     }
+    const low = p.stock<=p.minStock;
+    const cells = {
+      name:     `<td>${p.name}</td>`,
+      category: `<td>${p.category||'—'}</td>`,
+      stock:    `<td class="mono col-stock ${low?'low-stock':''}" title="${low?'Abaixo ou no estoque mínimo':''}">${p.stock}${low ? `<span class="min-hint">mín. ${p.minStock}</span>` : ''}</td>`,
+      cost:     `<td class="mono">${fmtBRL(p.costPrice)}</td>`,
+      price:    `<td class="mono">${fmtBRL(p.salePrice)}</td>`,
+      initial:  `<td class="mono">${hasBaseline ? p.initialStock : dim}</td>`,
+      entradas: `<td class="mono">${entradas}</td>`,
+      saidas:   `<td class="mono">${saidas}</td>`,
+      vendido:  `<td class="mono">${vendido}</td>`,
+      confere:  `<td class="mono">${conferHtml}</td>`
+    };
     return `
     <tr>
-      <td>${p.name}</td>
-      <td>${p.category||'—'}</td>
-      <td class="mono">${fmtBRL(p.costPrice)}</td>
-      <td class="mono">${fmtBRL(p.salePrice)}</td>
-      <td class="mono">${hasBaseline ? p.initialStock : '<span style="color:var(--text-dim);">—</span>'}</td>
-      <td class="mono">${entradas}</td>
-      <td class="mono">${saidas}</td>
-      <td class="mono">${p.totalSoldGross||0}</td>
-      <td class="mono">${vendido}</td>
-      <td class="mono ${p.stock<=p.minStock ? 'low-stock':''}">${p.stock}</td>
-      <td class="mono">${conferHtml}</td>
-      <td>
+      ${productColOrder.map(k=>cells[k]).join('')}
+      <td style="white-space:nowrap;">
         <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.id}')">Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="deleteProduct('${p.id}')">Excluir</button>
       </td>
@@ -1023,7 +1123,8 @@ let productSearchTerm = '';
 function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
 
 /* ---------------- regra de preço do DEVOCIONÁRIO (azul e bege/laranja) ----------------
-   1 unidade = R$ 35,00. A partir de 2 unidades (somando as cores), cada uma sai por R$ 32,50.
+   O 1º devocionário custa sempre R$ 35,00. Do 2º em diante (somando as cores), cada um sai por R$ 32,50.
+   1 = 35,00 · 2 = 67,50 · 3 = 100,00 · 4 = 132,50 · 5 = 165,00 ...
    O caixa aplica isso sozinho: não é preciso digitar desconto para os devocionários.
    Qualquer produto cujo NOME contenha "devocionário" (com ou sem acento) entra na regra. */
 const DEVOC_PRECO_1 = 35.00;
@@ -1032,11 +1133,12 @@ const DEVOC_QTD_MIN = 2;
 function isDevocionario(nome){
   return String(nome||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes('devocion');
 }
-function devocPrecoUnit(qtdTotal){ return qtdTotal >= DEVOC_QTD_MIN ? DEVOC_PRECO_2MAIS : DEVOC_PRECO_1; }
+/* Total dos devocionários pela regra atual: 1º a R$ 35,00, demais a R$ 32,50. */
+function devocTotalAtual(n){ return n<=0 ? 0 : round2(DEVOC_PRECO_1 + (n-1)*DEVOC_PRECO_2MAIS); }
 
 /* Regra do dia 18/10/2026 (lançamento): R$ 35,00 cada, com R$ 5,00 de desconto a cada PAR.
    1 = 35,00 · 2 = 65,00 · 3 = 100,00 · 4 = 130,00 ...
-   A partir de 19/10/2026 vale a regra de cima (2 ou mais = R$ 32,50 cada). */
+   A partir de 19/10/2026 vale a regra de cima (1º a R$ 35,00, do 2º em diante R$ 32,50). */
 const DEVOC_DIA_REGRA_ANTIGA = '2026-10-18';
 const DEVOC_INICIO_REGRA_NOVA = '2026-10-19';
 function saleDateKey(s){
@@ -1046,17 +1148,34 @@ function saleDateKey(s){
 }
 function devocTotalPelaRegra(n, dateKey){
   if(dateKey && dateKey < DEVOC_INICIO_REGRA_NOVA) return round2(n*DEVOC_PRECO_1 - 5*Math.floor(n/2));
-  return round2(n*devocPrecoUnit(n));
+  return devocTotalAtual(n);
 }
 function devocQtdCarrinho(){ return cart.filter(c=>isDevocionario(c.name)).reduce((s,c)=>s+c.qty,0); }
-/* Recalcula o preço de todos os devocionários do carrinho conforme a quantidade total. */
+/* Recalcula o preço dos devocionários do carrinho: a 1ª unidade (do primeiro devocionário
+   adicionado) sai a R$ 35,00 e todas as outras a R$ 32,50. Cada linha guarda o total dela
+   (lineTotal) e quantas unidades saíram a R$ 35,00 (fullQty). */
 function applyDevocPricing(){
-  const preco = devocPrecoUnit(devocQtdCarrinho());
+  let cheioUsado = false;
   cart.forEach(c=>{
-    if(isDevocionario(c.name)){ c.listUnitPrice = DEVOC_PRECO_1; c.unitPrice = preco; }
+    if(!isDevocionario(c.name)){ delete c.lineTotal; delete c.fullQty; return; }
+    const cheio = cheioUsado ? 0 : Math.min(1, c.qty);
+    if(cheio) cheioUsado = true;
+    c.listUnitPrice = DEVOC_PRECO_1;
+    c.fullQty = cheio;
+    c.lineTotal = round2(cheio*DEVOC_PRECO_1 + (c.qty-cheio)*DEVOC_PRECO_2MAIS);
+    c.unitPrice = round2(c.lineTotal / c.qty);
   });
 }
-function cartTotal(){ return cart.reduce((s,c)=>s + c.unitPrice*c.qty, 0); }
+function lineTotal(c){ return c.lineTotal!=null ? c.lineTotal : round2(c.unitPrice*c.qty); }
+function linePriceLabel(c){
+  if(!isDevocionario(c.name)) return `${fmtBRL(c.unitPrice)} un.`;
+  const promo = c.qty - (c.fullQty||0);
+  const partes = [];
+  if(c.fullQty) partes.push(`${c.fullQty}× ${fmtBRL(DEVOC_PRECO_1)}`);
+  if(promo) partes.push(`${promo}× ${fmtBRL(DEVOC_PRECO_2MAIS)}`);
+  return partes.join(' + ') + (promo ? ` <span style="color:var(--green-ok); font-weight:600;">(promo)</span>` : '');
+}
+function cartTotal(){ return cart.reduce((s,c)=>s + lineTotal(c), 0); }
 function discountValue(){
   const raw = parseBRLInput(document.getElementById('cart-discount').value);
   if(!raw || raw<0) return 0;
@@ -1114,12 +1233,12 @@ function renderCart(){
   } else {
     el.innerHTML = cart.map((c,i)=>`
       <div class="cart-item">
-        <div class="name">${c.name}<br><span class="mono" style="color:var(--text-dim); font-size:11.5px;">${c.category?c.category+' · ':''}${fmtBRL(c.unitPrice)} un.${(c.listUnitPrice && c.listUnitPrice>c.unitPrice) ? ` <span style="color:var(--green-ok); font-weight:600;">(promo, de ${fmtBRL(c.listUnitPrice)})</span>` : ''}</span></div>
+        <div class="name">${c.name}<br><span class="mono" style="color:var(--text-dim); font-size:11.5px;">${c.category?c.category+' · ':''}${linePriceLabel(c)}</span></div>
         <div class="qty-ctl">
           <button onclick="changeCartQty(${i},-1)">−</button>
           <span class="mono">${c.qty}</span>
           <button onclick="changeCartQty(${i},1)">+</button>
-          <span class="mono" style="margin-left:8px; min-width:66px; text-align:right; display:inline-block;">${fmtBRL(c.unitPrice*c.qty)}</span>
+          <span class="mono" style="margin-left:8px; min-width:66px; text-align:right; display:inline-block;">${fmtBRL(lineTotal(c))}</span>
           <button onclick="removeCartItem(${i})" style="margin-left:6px;color:var(--stamp);">✕</button>
         </div>
       </div>`).join('');
@@ -1129,10 +1248,10 @@ function renderCart(){
   if(promoEl){
     if(dq >= DEVOC_QTD_MIN){
       promoEl.style.display='block';
-      promoEl.innerHTML = `✓ Promoção do devocionário aplicada automaticamente: ${dq} un. × ${fmtBRL(DEVOC_PRECO_2MAIS)} = <b>${fmtBRL(dq*DEVOC_PRECO_2MAIS)}</b>. <b>Não</b> digite desconto para os devocionários.`;
+      promoEl.innerHTML = `✓ Promoção do devocionário aplicada automaticamente: 1× ${fmtBRL(DEVOC_PRECO_1)} + ${dq-1}× ${fmtBRL(DEVOC_PRECO_2MAIS)} = <b>${fmtBRL(devocTotalAtual(dq))}</b>. <b>Não</b> digite desconto para os devocionários.`;
     } else if(dq === 1){
       promoEl.style.display='block';
-      promoEl.innerHTML = `Devocionário: 1 un. = ${fmtBRL(DEVOC_PRECO_1)}. Levando 2 ou mais, cada um sai por ${fmtBRL(DEVOC_PRECO_2MAIS)} (o preço muda sozinho).`;
+      promoEl.innerHTML = `Devocionário: 1 un. = ${fmtBRL(DEVOC_PRECO_1)}. A partir do 2º, cada um sai por ${fmtBRL(DEVOC_PRECO_2MAIS)} (o preço muda sozinho).`;
     } else { promoEl.style.display='none'; }
   }
   document.getElementById('cart-subtotal').textContent = fmtBRL(cartTotal());
@@ -1263,8 +1382,8 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
   }
   const saleData = {
     date: firebase.firestore.FieldValue.serverTimestamp(),
-    items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:round2(c.unitPrice*c.qty),
-      ...(c.listUnitPrice && c.listUnitPrice>c.unitPrice ? {listUnitPrice:c.listUnitPrice, promo:'devocionario-2+'} : {})})),
+    items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:lineTotal(c),
+      ...(c.listUnitPrice && c.listUnitPrice>c.unitPrice ? {listUnitPrice:c.listUnitPrice, promo:'devocionario-1o-35-demais-32,50'} : {})})),
     subtotal: round2(cartTotal()),
     discount,
     total,
