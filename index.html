@@ -368,7 +368,14 @@
             <span class="mono" style="font-size:15px; color:var(--ink-2);" id="cart-subtotal">R$ 0,00</span>
           </div>
           <div id="devoc-promo-note" style="display:none; margin:0 0 10px; padding:8px 10px; border-radius:8px; background:#eef6ea; border:1px solid #c6dfba; font-size:12.5px; color:var(--ink-2);"></div>
-          <div class="field" style="margin-bottom:10px;"><label>Desconto (R$)</label><input type="text" inputmode="decimal" id="cart-discount" placeholder="0,00"></div>
+          <div class="row-flex" style="margin-bottom:10px;">
+            <div class="field"><label>Desconto (R$)</label><input type="text" inputmode="decimal" id="cart-discount" placeholder="0,00"></div>
+            <div class="field"><label>Frete (R$)</label><input type="text" inputmode="decimal" id="cart-shipping" placeholder="0,00"></div>
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Data da venda <span style="text-transform:none; letter-spacing:0; font-weight:400;">(deixe em branco para hoje)</span></label>
+            <input type="date" id="cart-sale-date">
+          </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin:0 0 14px;">
             <span style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-dim);">Total a pagar</span>
             <span style="font-family:'IBM Plex Mono'; font-size:28px; color:var(--brass); font-weight:600;" id="cart-total">R$ 0,00</span>
@@ -504,7 +511,7 @@
         </div>
       </div>
       <div class="grid grid-4" style="margin-bottom:20px;">
-        <div class="stat-card"><div class="label">Faturamento</div><div class="value brass mono" id="rep-revenue">R$ 0,00</div></div>
+        <div class="stat-card"><div class="label">Faturamento</div><div class="value brass mono" id="rep-revenue">R$ 0,00</div><div id="rep-shipping-note" style="font-size:11.5px; color:var(--text-dim); margin-top:4px;"></div></div>
         <div class="stat-card"><div class="label">Custo estimado</div><div class="value mono" id="rep-cost">R$ 0,00</div></div>
         <div class="stat-card"><div class="label">Lucro estimado</div><div class="value mono" id="rep-profit">R$ 0,00</div></div>
         <div class="stat-card"><div class="label">Nº de vendas</div><div class="value mono" id="rep-count">0</div></div>
@@ -609,6 +616,13 @@
       <button class="btn btn-stamp btn-sm" id="btn-save-correct-total">Salvar correção de valor</button>
     </div>
     <div id="sale-modal-correction-log" style="font-size:11.5px; color:var(--text-dim); margin:-10px 0 14px;"></div>
+    <div id="sale-modal-date-box" style="margin:0 0 16px; padding:12px 14px; border:1px dashed var(--border); border-radius:8px; background:var(--panel-alt);">
+      <div class="row-flex" style="align-items:flex-end;">
+        <div class="field"><label>Data e hora da venda</label><input type="datetime-local" id="sale-modal-date"></div>
+        <button class="btn btn-ghost btn-sm" id="btn-save-sale-date" style="margin-bottom:2px;">Salvar data</button>
+      </div>
+      <div id="sale-modal-date-log" style="font-size:11.5px; color:var(--text-dim); margin-top:6px;"></div>
+    </div>
     <div id="sale-modal-contact-box" style="display:none; margin:0 0 16px; padding:12px 14px; border:1px dashed var(--brass-dim); border-radius:8px; background:var(--panel-alt);">
       <div style="font-size:12px; color:var(--ink-2); margin-bottom:10px; line-height:1.4;">Contato do cliente (pré-venda):</div>
       <div class="row-flex">
@@ -1181,7 +1195,16 @@ function discountValue(){
   if(!raw || raw<0) return 0;
   return Math.min(round2(raw), round2(cartTotal()));
 }
-function cartFinalTotal(){ return round2(Math.max(cartTotal() - discountValue(), 0)); }
+function shippingValue(){
+  const el = document.getElementById('cart-shipping');
+  const raw = el ? parseBRLInput(el.value) : 0;
+  return (!raw || raw<0) ? 0 : round2(raw);
+}
+/* Total = produtos − desconto + frete. O frete fica registrado à parte (campo "shipping")
+   e não entra no faturamento de nenhum produto. */
+function cartFinalTotal(){ return round2(Math.max(cartTotal() - discountValue(), 0) + shippingValue()); }
+/* Frete de uma venda já registrada (vendas antigas não têm o campo = 0). */
+function saleShipping(s){ return (s && s.shipping) ? s.shipping : 0; }
 
 document.getElementById('product-search').addEventListener('input', e=>{
   productSearchTerm = e.target.value;
@@ -1268,6 +1291,7 @@ function changeCartQty(i, delta){
   renderCart();
 }
 document.getElementById('cart-discount').addEventListener('input', renderCart);
+document.getElementById('cart-shipping').addEventListener('input', renderCart);
 
 function removeCartItem(i){ cart.splice(i,1); renderCart(); }
 document.getElementById('btn-clear-cart').addEventListener('click', ()=>{
@@ -1275,24 +1299,26 @@ document.getElementById('btn-clear-cart').addEventListener('click', ()=>{
   paymentRows = [{method:'Pix', amount:0}];
   const cashEl = document.getElementById('cash-received'); if(cashEl) cashEl.value='';
   document.getElementById('cart-discount').value = '';
+  document.getElementById('cart-shipping').value = '';
+  document.getElementById('cart-sale-date').value = '';
   document.getElementById('receipt-holder').innerHTML = '';
   renderCart();
 });
 
 /* -------- pagamento dividido (várias formas na mesma venda) -------- */
-const INSTALLMENT_OPTIONS = [1,2,3,4,5,6];
+/* Crédito só até 3x. Vendas antigas registradas em 4x ou mais continuam como estão:
+   ao abrir uma delas, o parcelamento antigo aparece marcado como "registro antigo". */
+const INSTALLMENT_OPTIONS = [1,2,3];
 function installmentSelectHtml(i, row, isModal){
   const val = row.installments || 1;
-  const isCustom = !INSTALLMENT_OPTIONS.includes(val);
+  const isOld = !INSTALLMENT_OPTIONS.includes(val);
   const setFn = isModal ? 'setModalPaymentInstallments' : 'setPaymentInstallments';
-  const setCustomFn = isModal ? 'setModalPaymentInstallmentsCustom' : 'setPaymentInstallmentsCustom';
   return `
     <div class="payment-row" style="margin-top:-4px;">
-      <select style="max-width:180px;" onchange="${setFn}(${i}, this.value)">
-        ${INSTALLMENT_OPTIONS.map(n=>`<option value="${n}" ${!isCustom && val===n ? 'selected':''}>${n===1?'À vista':n+'x sem juros'}</option>`).join('')}
-        <option value="outras" ${isCustom?'selected':''}>Outras vezes...</option>
+      <select style="max-width:200px;" onchange="${setFn}(${i}, this.value)">
+        ${INSTALLMENT_OPTIONS.map(n=>`<option value="${n}" ${val===n ? 'selected':''}>${n===1?'À vista':n+'x sem juros'}</option>`).join('')}
+        ${isOld ? `<option value="${val}" selected>${val}x (registro antigo)</option>` : ''}
       </select>
-      ${isCustom ? `<input type="number" min="2" style="max-width:90px;" value="${val}" placeholder="nº de vezes" onchange="${setCustomFn}(${i}, this.value)">` : ''}
     </div>`;
 }
 
@@ -1336,7 +1362,7 @@ function setPaymentMethod(i, value){
   renderPaymentRows();
 }
 function setPaymentAmount(i, value){ paymentRows[i].amount = round2(parseBRLInput(value)); renderPaymentRows(); }
-function setPaymentInstallments(i, value){ paymentRows[i].installments = value==='outras' ? 7 : parseInt(value); renderPaymentRows(); }
+function setPaymentInstallments(i, value){ paymentRows[i].installments = Math.min(Math.max(parseInt(value)||1,1),3); renderPaymentRows(); }
 function setPaymentInstallmentsCustom(i, value){ paymentRows[i].installments = Math.max(parseInt(value)||2,2); renderPaymentRows(); }
 function removePaymentRow(i){
   if(paymentRows.length<=1) return;
@@ -1380,12 +1406,25 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     if(!p){ showToast(`"${c.name}" não está mais no catálogo. Remova do carrinho.`); return; }
     if(c.qty > (p.stock||0)){ showToast(`Estoque insuficiente de "${c.name}" (${p.stock||0} disponível). Ajuste o carrinho.`); return; }
   }
+  // Data da venda: em branco = agora. Com uma data escolhida, usa aquele dia com o horário atual.
+  const dateInput = document.getElementById('cart-sale-date').value;
+  let saleDate = firebase.firestore.FieldValue.serverTimestamp();
+  if(dateInput){
+    const [yy,mm,dd] = dateInput.split('-').map(Number);
+    const now = new Date();
+    const chosen = new Date(yy, mm-1, dd, now.getHours(), now.getMinutes(), now.getSeconds());
+    if(chosen.getTime() > Date.now() + 60000){ showToast('A data da venda não pode ser no futuro.'); return; }
+    const ehHoje = chosen.toDateString() === now.toDateString();
+    if(!ehHoje) saleDate = firebase.firestore.Timestamp.fromDate(chosen);
+  }
+  const shipping = round2(shippingValue());
   const saleData = {
-    date: firebase.firestore.FieldValue.serverTimestamp(),
+    date: saleDate,
     items: cart.map(c=>({productId:c.productId, name:c.name, category:c.category||'', qty:c.qty, unitPrice:c.unitPrice, subtotal:lineTotal(c),
       ...(c.listUnitPrice && c.listUnitPrice>c.unitPrice ? {listUnitPrice:c.listUnitPrice, promo:'devocionario-1o-35-demais-32,50'} : {})})),
     subtotal: round2(cartTotal()),
     discount,
+    ...(shipping>0 ? {shipping} : {}),
     total,
     payments: paymentsClean,
     cashReceived, changeGiven,
@@ -1405,7 +1444,7 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
           totalSoldGross: firebase.firestore.FieldValue.increment(c.qty)
         });
         batch.set(db.collection('movements').doc(), {
-          date: firebase.firestore.FieldValue.serverTimestamp(),
+          date: saleDate,
           productId: c.productId, productName: c.name, type:'saida', category:'venda', label:'Venda',
           qty: c.qty, reason:'Venda', user: seller, saleId: saleRef.id
         });
@@ -1416,11 +1455,64 @@ document.getElementById('btn-finish-sale').addEventListener('click', async ()=>{
     paymentRows = [{method:'Pix', amount:0}];
     document.getElementById('cash-received').value='';
     document.getElementById('cart-discount').value='';
+    document.getElementById('cart-shipping').value='';
+    document.getElementById('cart-sale-date').value='';
     renderCart();
     showToast('Venda registrada.');
   } catch(err){
     console.error(err);
     showToast('Erro ao registrar a venda.');
+  }
+});
+
+/* -------- alterar a data de uma venda já registrada -------- */
+function toLocalInput(d){
+  const pad = n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function renderSaleDateBox(s){
+  const d = s.date && s.date.toDate ? s.date.toDate() : null;
+  document.getElementById('sale-modal-date').value = d ? toLocalInput(d) : '';
+  const log = s.dateChanges || [];
+  document.getElementById('sale-modal-date-log').innerHTML = log.length
+    ? 'Histórico de datas: ' + log.map(c=>`${new Date(c.from).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} → ${new Date(c.to).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} (por ${c.by})`).join('; ')
+    : '';
+}
+document.getElementById('btn-save-sale-date').addEventListener('click', async ()=>{
+  const s = sales.find(x=>x.id===currentSaleModalId);
+  if(!s) return;
+  const val = document.getElementById('sale-modal-date').value;
+  if(!val){ showToast('Escolha a data da venda.'); return; }
+  const novo = new Date(val);
+  if(isNaN(novo)){ showToast('Data inválida.'); return; }
+  if(novo.getTime() > Date.now() + 60000){ showToast('A data da venda não pode ser no futuro.'); return; }
+  const antigo = s.date && s.date.toDate ? s.date.toDate() : null;
+  if(antigo && Math.abs(antigo.getTime()-novo.getTime()) < 60000){ showToast('A data é igual à atual.'); return; }
+  if(!confirm(`Mudar a data desta venda${antigo?` de ${antigo.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}`:''} para ${novo.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}?\n\nItens, valores, pagamento e estoque não mudam — só a data.`)) return;
+  const ts = firebase.firestore.Timestamp.fromDate(novo);
+  const entry = {from: antigo ? antigo.toISOString() : null, to: novo.toISOString(), by: emailParaUsuario(currentUser.email), at: new Date().toISOString()};
+  try{
+    await db.collection('sales').doc(currentSaleModalId).update({
+      date: ts,
+      dateChanges: firebase.firestore.FieldValue.arrayUnion(entry)
+    });
+    s.date = ts;
+    s.dateChanges = [...(s.dateChanges||[]), entry];
+    // Leva junto a data das saídas de estoque dessa venda (só muda a data, nada mais).
+    try{
+      const movs = await db.collection('movements').where('saleId','==',currentSaleModalId).get();
+      if(!movs.empty){
+        const batch = db.batch();
+        movs.forEach(m=> batch.update(m.ref, {date: ts}));
+        await batch.commit();
+      }
+    }catch(e){ console.warn('Não foi possível atualizar a data das movimentações:', e); }
+    renderSaleDateBox(s);
+    showToast('Data da venda alterada.');
+    if(typeof renderDashboard==='function') renderDashboard();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao alterar a data.');
   }
 });
 
@@ -1442,7 +1534,9 @@ function showReceipt(sale){
       <div class="sub">comprovante de venda</div>
       ${sale.items.map(i=>`<div class="rline"><span>${i.qty}× ${i.name}${i.presale?' (pré-venda)':''}</span><span>${fmtBRL(i.subtotal)}</span></div>`).join('')}
       <hr>
-      ${sale.discount ? `<div class="rline"><span>Subtotal</span><span>${fmtBRL(sale.subtotal!=null?sale.subtotal:sale.total+sale.discount)}</span></div><div class="rline"><span>Desconto</span><span>−${fmtBRL(sale.discount)}</span></div>` : ''}
+      ${(sale.discount || sale.shipping) ? `<div class="rline"><span>Subtotal</span><span>${fmtBRL(sale.subtotal!=null?sale.subtotal:sale.total+(sale.discount||0)-(sale.shipping||0))}</span></div>` : ''}
+      ${sale.discount ? `<div class="rline"><span>Desconto</span><span>−${fmtBRL(sale.discount)}</span></div>` : ''}
+      ${sale.shipping ? `<div class="rline"><span>Frete</span><span>+${fmtBRL(sale.shipping)}</span></div>` : ''}
       <div class="rline total"><span>TOTAL</span><span>${fmtBRL(sale.total)}</span></div>
       ${sale.payments.map(p=>`<div class="rline"><span>${paymentLabel(p)}</span><span>${fmtBRL(p.amount)}</span></div>`).join('')}
       ${sale.changeGiven ? `<div class="rline"><span>Troco</span><span>${fmtBRL(sale.changeGiven)}</span></div>` : ''}
@@ -1657,7 +1751,11 @@ async function openSaleModal(saleId){
       </span>
     </div>`
   ).join('');
-  document.getElementById('sale-modal-total').innerHTML = s.discount ? `${fmtBRL(s.total)} <span style="font-size:12px; color:var(--text-dim); font-family:inherit;">(desconto de ${fmtBRL(s.discount)} já aplicado)</span>` : fmtBRL(s.total);
+  const notas = [];
+  if(s.discount) notas.push(`desconto de ${fmtBRL(s.discount)} já aplicado`);
+  if(s.shipping) notas.push(`inclui frete de ${fmtBRL(s.shipping)}`);
+  document.getElementById('sale-modal-total').innerHTML = notas.length ? `${fmtBRL(s.total)} <span style="font-size:12px; color:var(--text-dim); font-family:inherit;">(${notas.join(' · ')})</span>` : fmtBRL(s.total);
+  renderSaleDateBox(s);
 
   document.getElementById('sale-modal-correct-box').style.display = 'none';
   document.getElementById('correct-total-value').value = '';
@@ -1739,7 +1837,7 @@ function setModalPaymentMethod(i, value){
 }
 function setModalPaymentAmount(i, value, saleTotal){ modalPaymentRows[i].amount = round2(parseBRLInput(value)); renderModalPaymentRows(saleTotal); }
 function setModalPaymentInstallments(i, value){
-  modalPaymentRows[i].installments = value==='outras' ? 7 : parseInt(value);
+  modalPaymentRows[i].installments = parseInt(value)||1;
   const s = sales.find(x=>x.id===currentSaleModalId);
   renderModalPaymentRows(s ? s.total : 0);
 }
@@ -2092,7 +2190,7 @@ function itemListUnit(it){
    atribuído só aos devocionários. Sem devocionário, rateia proporcionalmente. */
 function saleItemNets(s){
   const items = s.items||[];
-  const total = s.total||0;
+  const total = (s.total||0) - saleShipping(s);   // frete não é receita de produto
   const devSub = items.filter(i=>isDevocionario(i.name)).reduce((a,i)=>a+(i.subtotal||0),0);
   const outSub = items.filter(i=>!isDevocionario(i.name)).reduce((a,i)=>a+(i.subtotal||0),0);
   const devQty = items.filter(i=>isDevocionario(i.name)).reduce((a,i)=>a+i.qty,0);
@@ -2112,7 +2210,7 @@ function auditSaleDevoc(s){
   if(n===0) return null;
   const outros = items.filter(i=>!isDevocionario(i.name)).reduce((a,i)=>a+(i.subtotal||0),0);
   const correto = round2(outros + devocTotalPelaRegra(n, saleDateKey(s)));
-  const cobrado = round2(s.total||0);
+  const cobrado = round2((s.total||0) - saleShipping(s));   // frete fica fora da conferência
   return {sale:s, n, correto, cobrado, diff: round2(cobrado-correto)};
 }
 let devocAuditRows = [];
@@ -2204,6 +2302,9 @@ async function runReport(){
     }
     const activeSales = filtered.filter(s=>!s.cancelled);
     const revenue = activeSales.reduce((s,x)=>s+saleRevenueForFilter(x),0);
+    // Frete do período (na mesma proporção da forma de pagamento filtrada). Entra no faturamento,
+    // mas não no lucro: é repassado, não é ganho com produto.
+    const shippingTotal = activeSales.reduce((sum,x)=> sum + (x.total>0 ? saleShipping(x)*saleRevenueForFilter(x)/x.total : 0), 0);
     const cost = activeSales.reduce((sum,s)=>{
       const saleCost = s.items.reduce((si,i)=>{
         const p = products.find(pp=>pp.id===i.productId);
@@ -2214,8 +2315,9 @@ async function runReport(){
       return sum + saleCost*share;
     },0);
     document.getElementById('rep-revenue').textContent = fmtBRL(revenue);
+    document.getElementById('rep-shipping-note').textContent = shippingTotal>0.005 ? `inclui ${fmtBRL(shippingTotal)} de frete` : '';
     document.getElementById('rep-cost').textContent = fmtBRL(cost);
-    document.getElementById('rep-profit').textContent = fmtBRL(revenue-cost);
+    document.getElementById('rep-profit').textContent = fmtBRL(revenue-shippingTotal-cost);
     document.getElementById('rep-count').textContent = activeSales.length;
 
     // Resumo por produto/cor: soma as quantidades vendidas de cada item (ex: bíblia preta,
