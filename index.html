@@ -312,6 +312,7 @@
     <button data-view="estoque">Estoque</button>
     <button data-view="movimentacoes">Movimentações</button>
     <button data-view="relatorios">Relatórios</button>
+    <button data-view="caixa">Caixa (dinheiro)</button>
   </nav>
 
   <main>
@@ -481,6 +482,65 @@
           <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd.</th><th>Motivo</th><th>Usuário</th></tr></thead>
           <tbody id="movements-table"></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- ---------- CAIXA (DINHEIRO) ---------- -->
+    <section class="view" id="view-caixa">
+      <div class="grid grid-4" style="margin-bottom:16px;">
+        <div class="stat-card"><div class="label">Saldo em caixa</div><div class="value brass mono" id="cx-saldo">R$ 0,00</div><div id="cx-desde" style="font-size:11.5px; color:var(--text-dim); margin-top:4px;"></div></div>
+        <div class="stat-card"><div class="label">Entradas em dinheiro (vendas)</div><div class="value mono" id="cx-entradas">R$ 0,00</div></div>
+        <div class="stat-card"><div class="label">Enviado ao financeiro</div><div class="value stamp mono" id="cx-retiradas">R$ 0,00</div></div>
+        <div class="stat-card"><div class="label">Ajustes manuais</div><div class="value mono" id="cx-ajustes">R$ 0,00</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Lançar no caixa</h2>
+        <div class="row-flex">
+          <div class="field" style="max-width:240px;">
+            <label>Tipo</label>
+            <select id="cx-tipo">
+              <option value="retirada">Retirada – envio ao financeiro</option>
+              <option value="ajuste_mais">Ajuste manual (+ entrada)</option>
+              <option value="ajuste_menos">Ajuste manual (− saída)</option>
+              <option value="abertura">Saldo inicial (abertura do caixa)</option>
+            </select>
+          </div>
+          <div class="field" style="max-width:150px;"><label>Valor (R$)</label><input type="text" inputmode="decimal" id="cx-valor" placeholder="0,00"></div>
+          <div class="field" style="max-width:220px;"><label>Data e hora</label><input type="datetime-local" id="cx-data"></div>
+          <div class="field"><label>Observação</label><input type="text" id="cx-obs" placeholder="ex: entregue a fulano do financeiro / troco devolvido"></div>
+          <button class="btn btn-brass" id="btn-cx-lancar">Lançar</button>
+        </div>
+        <div id="cx-tipo-ajuda" style="font-size:12px; color:var(--text-dim); margin-top:8px;"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Conferir o caixa</h2>
+        <div style="font-size:12px; color:var(--text-dim); margin:-6px 0 10px;">Conte o dinheiro da gaveta e digite o valor. Se não bater, você pode lançar a diferença como ajuste.</div>
+        <div class="row-flex">
+          <div class="field" style="max-width:200px;"><label>Valor contado (R$)</label><input type="text" inputmode="decimal" id="cx-contado" placeholder="0,00"></div>
+          <div id="cx-conf-result" style="flex:2; font-size:13.5px; font-weight:600; padding-bottom:8px;"></div>
+          <button class="btn btn-ghost" id="btn-cx-ajustar" style="display:none;">Lançar diferença como ajuste</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <h2 style="margin:0;">Extrato do caixa</h2>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <label style="font-size:12.5px; cursor:pointer;"><input type="checkbox" id="cx-so-manuais"> Só lançamentos manuais</label>
+            <button class="btn btn-ghost btn-sm" id="btn-cx-csv">Exportar (.csv)</button>
+          </div>
+        </div>
+        <div style="font-size:12px; color:var(--text-dim); margin:-4px 0 10px;">
+          As entradas em dinheiro vêm sozinhas das vendas (só a parte paga em dinheiro, já sem o troco; vendas canceladas não entram). O saldo começa no último <b>saldo inicial</b> lançado.
+        </div>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Data</th><th>Lançamento</th><th>Observação</th><th>Entrada</th><th>Saída</th><th>Saldo</th><th>Usuário</th><th></th></tr></thead>
+          <tbody id="cx-extrato"></tbody>
+        </table>
+        </div>
       </div>
     </section>
 
@@ -713,7 +773,7 @@ let sales = [];         // {id,date,items,total,payments:[{method,amount}],cashR
 let movements = [];     // {id,date,productId,productName,type,qty,reason,user}
 let cart = [];           // {productId,name,category,unitPrice,qty}
 let paymentRows = [{method:'Pix', amount:0}]; // linhas de pagamento da venda atual (permite dividir)
-let unsubProducts=null, unsubSales=null, unsubMov=null;
+let unsubProducts=null, unsubSales=null, unsubMov=null, unsubCaixa=null;
 
 /* ------------------------------ helpers -------------------------------- */
 const fmtBRL = v => (v||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
@@ -801,6 +861,7 @@ auth.onAuthStateChanged(user=>{
     if(unsubProducts) unsubProducts();
     if(unsubSales) unsubSales();
     if(unsubMov) unsubMov();
+    if(unsubCaixa) unsubCaixa();
   }
 });
 
@@ -811,6 +872,7 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
     document.querySelectorAll('section.view').forEach(s=>s.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view==='caixa') renderCaixa(true);
   });
 });
 
@@ -828,12 +890,227 @@ function attachListeners(){
     renderDashboard();
     renderRecentSales();
     renderTodaySales();
+    caixaSalesStale = true;
+    if(document.getElementById('view-caixa').classList.contains('active')) renderCaixa();
   });
   unsubMov = db.collection('movements').orderBy('date','desc').limit(500).onSnapshot(snap=>{
     movements = snap.docs.map(d=>({id:d.id, ...d.data()}));
     renderMovements();
   });
+  unsubCaixa = db.collection('cashbox').orderBy('date','asc').onSnapshot(snap=>{
+    caixaLanc = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    caixaSalesStale = true;
+    if(document.getElementById('view-caixa').classList.contains('active')) renderCaixa();
+  }, err=>{
+    console.error(err);
+    document.getElementById('cx-extrato').innerHTML = `<tr><td colspan="8"><div class="empty-state">Não foi possível ler o caixa. Verifique se as regras do Firebase liberam a coleção <b>cashbox</b>.</div></td></tr>`;
+  });
 }
+
+/* ============================ CAIXA (DINHEIRO) ============================
+   Lançamentos manuais ficam na coleção "cashbox": abertura (saldo inicial), retirada
+   (envio ao financeiro), ajuste_mais e ajuste_menos. As entradas vêm das vendas: soma da
+   parte paga em Dinheiro de cada venda não cancelada (o valor já está sem o troco).
+   O saldo parte do último "saldo inicial" lançado. Lançamentos não são apagados: podem ser
+   anulados, e o registro continua no extrato riscado. */
+let caixaLanc = [];
+let caixaSalesCache = [], caixaSalesStale = true, caixaSalesDesde = null, caixaLoading = false;
+const CX_LABEL = {abertura:'Saldo inicial', retirada:'Retirada → financeiro', ajuste_mais:'Ajuste (+)', ajuste_menos:'Ajuste (−)'};
+const CX_AJUDA = {
+  retirada:'Dinheiro tirado da gaveta e enviado ao financeiro. Diminui o saldo.',
+  ajuste_mais:'Use para dinheiro que entrou e não veio de venda (ex: reforço de troco) ou para corrigir uma diferença a mais.',
+  ajuste_menos:'Use para dinheiro que saiu e não foi para o financeiro, ou para corrigir uma diferença a menos.',
+  abertura:'Valor que havia na gaveta ao começar o controle (ou após uma recontagem). O saldo passa a contar a partir daqui; o que veio antes fica só como histórico.'
+};
+const tsToDate = ts => ts ? (ts.toDate ? ts.toDate() : new Date(ts)) : null;
+function cxSetNow(){
+  const d = new Date(), pad = n=>String(n).padStart(2,'0');
+  document.getElementById('cx-data').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+cxSetNow();
+document.getElementById('cx-tipo').addEventListener('change', e=>{ document.getElementById('cx-tipo-ajuda').textContent = CX_AJUDA[e.target.value]; });
+document.getElementById('cx-tipo-ajuda').textContent = CX_AJUDA.retirada;
+
+function cxAbertura(){
+  const ab = caixaLanc.filter(l=>l.tipo==='abertura' && !l.anulado);
+  return ab.length ? ab[ab.length-1] : null;
+}
+function saleCashIn(s){
+  if(s.cancelled) return 0;
+  return salePayments(s).filter(p=>p.method==='Dinheiro').reduce((a,p)=>a+(p.amount||0),0);
+}
+async function cxLoadSales(){
+  const ab = cxAbertura();
+  const desde = ab ? tsToDate(ab.date) : null;
+  const key = desde ? desde.getTime() : 0;
+  if(!caixaSalesStale && caixaSalesDesde===key) return;
+  if(caixaLoading) return;
+  caixaLoading = true;
+  try{
+    let q = db.collection('sales').orderBy('date','asc');
+    if(desde) q = q.where('date','>=', firebase.firestore.Timestamp.fromDate(desde));
+    const snap = await q.get();
+    caixaSalesCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    caixaSalesDesde = key; caixaSalesStale = false;
+  }catch(err){ console.error(err); showToast('Erro ao ler as vendas para o caixa.'); }
+  caixaLoading = false;
+}
+/* Monta o extrato em ordem cronológica com saldo corrente. */
+function cxBuildRows(){
+  const ab = cxAbertura();
+  const desde = ab ? tsToDate(ab.date) : null;
+  const rows = [];
+  // entradas das vendas, agrupadas por dia
+  const porDia = {};
+  caixaSalesCache.forEach(s=>{
+    const d = tsToDate(s.date); if(!d) return;
+    if(desde && d < desde) return;
+    const v = saleCashIn(s); if(v<=0) return;
+    const k = d.toDateString();
+    if(!porDia[k]) porDia[k] = {date:d, valor:0, n:0};
+    porDia[k].valor += v; porDia[k].n++;
+    if(d > porDia[k].date) porDia[k].date = d;
+  });
+  Object.values(porDia).forEach(x=> rows.push({kind:'vendas', date:x.date, entrada:x.valor, saida:0,
+    label:'Vendas em dinheiro do dia', obs:`${x.n} venda${x.n===1?'':'s'}`}));
+  caixaLanc.forEach(l=>{
+    const d = tsToDate(l.date); if(!d) return;
+    const antes = desde && d < desde && l.id !== (ab&&ab.id);
+    const e = (l.tipo==='abertura'||l.tipo==='ajuste_mais') ? l.valor : 0;
+    const sa = (l.tipo==='retirada'||l.tipo==='ajuste_menos') ? l.valor : 0;
+    rows.push({kind:'manual', l, date:d, entrada:e, saida:sa, label:CX_LABEL[l.tipo]||l.tipo, obs:l.obs||'',
+      fora: l.anulado || antes || (l.tipo==='abertura' && l.id!==(ab&&ab.id))});
+  });
+  // abertura vem antes de qualquer coisa do mesmo instante; vendas do dia no fim do dia
+  rows.sort((a,b)=> a.date-b.date || (a.kind==='manual'&&a.l.tipo==='abertura' ? -1 : 0));
+  let saldo = 0;
+  rows.forEach(r=>{
+    if(r.fora) { r.saldo = null; return; }
+    if(r.kind==='manual' && r.l.tipo==='abertura') saldo = r.entrada;
+    else saldo += r.entrada - r.saida;
+    r.saldo = round2(saldo);
+  });
+  return rows;
+}
+async function renderCaixa(force){
+  if(force) caixaSalesStale = true;
+  await cxLoadSales();
+  const rows = cxBuildRows();
+  const ativos = rows.filter(r=>!r.fora);
+  const sum = f => round2(ativos.reduce((a,r)=>a+f(r),0));
+  const entradas = sum(r=> r.kind==='vendas' ? r.entrada : 0);
+  const retiradas = sum(r=> r.kind==='manual' && r.l.tipo==='retirada' ? r.saida : 0);
+  const ajustes = sum(r=> r.kind==='manual' && r.l.tipo.startsWith('ajuste') ? r.entrada - r.saida : 0);
+  const saldo = ativos.length ? ativos[ativos.length-1].saldo : 0;
+  const ab = cxAbertura();
+  document.getElementById('cx-saldo').textContent = fmtBRL(saldo);
+  document.getElementById('cx-entradas').textContent = fmtBRL(entradas);
+  document.getElementById('cx-retiradas').textContent = fmtBRL(retiradas);
+  document.getElementById('cx-ajustes').textContent = (ajustes>0?'+':'') + fmtBRL(ajustes);
+  document.getElementById('cx-desde').innerHTML = ab
+    ? `desde ${fmtDate(ab.date)} (saldo inicial ${fmtBRL(ab.valor)})`
+    : '<span style="color:var(--stamp);">Lance o saldo inicial para começar</span>';
+  window.__cxSaldo = saldo;
+  cxConferir();
+
+  const so = document.getElementById('cx-so-manuais').checked;
+  const vis = rows.filter(r=> !so || r.kind==='manual').slice().reverse();
+  window.__cxRows = rows;
+  document.getElementById('cx-extrato').innerHTML = vis.length===0
+    ? `<tr><td colspan="8"><div class="empty-state"><div class="glyph">💵</div>Nenhum lançamento ainda. Comece lançando o <b>saldo inicial</b>.</div></td></tr>`
+    : vis.map(r=>{
+        const st = r.fora ? 'style="opacity:.5; text-decoration:line-through;"' : '';
+        const nota = r.kind==='manual' && r.l.anulado ? `<br><span style="font-size:11px; color:var(--stamp); text-decoration:none;">anulado por ${r.l.anuladoPor||'—'}${r.l.motivoAnulacao?': '+r.l.motivoAnulacao:''}</span>`
+          : (r.fora ? '<br><span style="font-size:11px; color:var(--text-dim);">antes do saldo inicial atual</span>' : '');
+        return `<tr ${st}>
+          <td class="mono">${r.kind==='vendas' ? r.date.toLocaleDateString('pt-BR') : fmtDate(r.l.date)}</td>
+          <td>${r.kind==='manual' && r.l.tipo==='retirada' ? `<b>${r.label}</b>` : r.label}${nota}</td>
+          <td>${r.obs||'—'}</td>
+          <td class="mono" style="color:var(--green-ok);">${r.entrada ? fmtBRL(r.entrada) : ''}</td>
+          <td class="mono" style="color:var(--stamp);">${r.saida ? fmtBRL(r.saida) : ''}</td>
+          <td class="mono" style="font-weight:600;">${r.saldo==null ? '—' : fmtBRL(r.saldo)}</td>
+          <td>${r.kind==='manual' ? (r.l.user||'—') : '—'}</td>
+          <td>${r.kind==='manual' && !r.l.anulado ? `<button class="link-btn" onclick="cxAnular('${r.l.id}')">anular</button>` : ''}</td>
+        </tr>`;}).join('');
+}
+document.getElementById('cx-so-manuais').addEventListener('change', ()=>renderCaixa());
+
+document.getElementById('btn-cx-lancar').addEventListener('click', async ()=>{
+  const tipo = document.getElementById('cx-tipo').value;
+  const valor = round2(parseBRLInput(document.getElementById('cx-valor').value));
+  const dv = document.getElementById('cx-data').value;
+  const obs = document.getElementById('cx-obs').value.trim();
+  if(!(valor>0) && tipo!=='abertura'){ showToast('Informe o valor.'); return; }
+  if(valor<0){ showToast('Valor inválido.'); return; }
+  const data = dv ? new Date(dv) : new Date();
+  if(isNaN(data)){ showToast('Data inválida.'); return; }
+  if(data.getTime() > Date.now()+60000){ showToast('A data não pode ser no futuro.'); return; }
+  if(tipo.startsWith('ajuste') && !obs){ showToast('Para ajuste manual, escreva o motivo na observação.'); return; }
+  if(tipo==='retirada' && window.__cxSaldo!=null && valor > window.__cxSaldo + 0.005 &&
+     !confirm(`A retirada (${fmtBRL(valor)}) é maior que o saldo do caixa (${fmtBRL(window.__cxSaldo)}). Lançar mesmo assim?`)) return;
+  if(tipo==='abertura' && cxAbertura() &&
+     !confirm('Já existe um saldo inicial. Lançar um novo faz o saldo recomeçar a partir desta data (o que veio antes fica só como histórico). Continuar?')) return;
+  try{
+    await db.collection('cashbox').add({
+      tipo, valor, obs, date: firebase.firestore.Timestamp.fromDate(data),
+      user: emailParaUsuario(currentUser.email), createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('cx-valor').value=''; document.getElementById('cx-obs').value=''; cxSetNow();
+    showToast(tipo==='retirada' ? 'Retirada registrada.' : 'Lançamento registrado.');
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao lançar. Verifique as regras do Firebase para a coleção "cashbox".');
+  }
+});
+
+async function cxAnular(id){
+  const l = caixaLanc.find(x=>x.id===id); if(!l) return;
+  const motivo = prompt(`Anular "${CX_LABEL[l.tipo]}" de ${fmtBRL(l.valor)}?\nO lançamento continua no extrato, riscado.\n\nMotivo:`);
+  if(motivo===null) return;
+  try{
+    await db.collection('cashbox').doc(id).update({anulado:true, motivoAnulacao:motivo.trim(),
+      anuladoPor: emailParaUsuario(currentUser.email), anuladoEm: new Date().toISOString()});
+    showToast('Lançamento anulado.');
+  }catch(err){ console.error(err); showToast('Erro ao anular.'); }
+}
+
+function cxConferir(){
+  const raw = document.getElementById('cx-contado').value;
+  const el = document.getElementById('cx-conf-result'), btn = document.getElementById('btn-cx-ajustar');
+  if(!raw.trim()){ el.textContent=''; btn.style.display='none'; return; }
+  const diff = round2(parseBRLInput(raw) - (window.__cxSaldo||0));
+  if(Math.abs(diff)<0.01){ el.innerHTML = '<span style="color:var(--green-ok);">✓ Bate com o saldo do sistema.</span>'; btn.style.display='none'; }
+  else { el.innerHTML = `<span style="color:var(--stamp);">${diff>0?'Sobrando':'Faltando'} ${fmtBRL(Math.abs(diff))}</span> <span style="font-weight:400; color:var(--text-dim);">(sistema: ${fmtBRL(window.__cxSaldo||0)})</span>`; btn.style.display=''; }
+  btn.dataset.diff = diff;
+}
+document.getElementById('cx-contado').addEventListener('input', cxConferir);
+document.getElementById('btn-cx-ajustar').addEventListener('click', ()=>{
+  const diff = parseFloat(document.getElementById('btn-cx-ajustar').dataset.diff)||0;
+  document.getElementById('cx-tipo').value = diff>0 ? 'ajuste_mais' : 'ajuste_menos';
+  document.getElementById('cx-tipo-ajuda').textContent = CX_AJUDA[document.getElementById('cx-tipo').value];
+  document.getElementById('cx-valor').value = Math.abs(diff).toFixed(2).replace('.',',');
+  document.getElementById('cx-obs').value = `Diferença na conferência (contado ${document.getElementById('cx-contado').value})`;
+  cxSetNow();
+  document.getElementById('cx-valor').scrollIntoView({behavior:'smooth', block:'center'});
+  showToast('Confira os dados e clique em Lançar.');
+});
+
+document.getElementById('btn-cx-csv').addEventListener('click', ()=>{
+  const rows = window.__cxRows||[];
+  const num = v => v ? String(round2(v).toFixed(2)).replace('.',',') : '';
+  const esc = v => `"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const head = ['Data','Lançamento','Observação','Entrada','Saída','Saldo','Usuário','Situação'];
+  const lines = rows.map(r=>[
+    r.kind==='vendas' ? r.date.toLocaleDateString('pt-BR') : fmtDate(r.l.date), r.label, r.obs,
+    num(r.entrada), num(r.saida), r.saldo==null?'':num(r.saldo)||'0,00',
+    r.kind==='manual' ? (r.l.user||'') : '',
+    r.kind==='manual' && r.l.anulado ? 'Anulado' : (r.fora ? 'Antes do saldo inicial' : '')
+  ].map(esc).join(';'));
+  const blob = new Blob(['\uFEFF'+[head.map(esc).join(';'), ...lines].join('\r\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = `caixa-dinheiro-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
 
 /* ------------------------------ produtos --------------------------------- */
 /* Colunas da tabela de produtos (a de ações fica sempre no fim). A ordem pode ser
